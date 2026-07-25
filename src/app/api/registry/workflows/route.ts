@@ -39,7 +39,19 @@ export async function POST(req: Request) {
       updatedAt: now,
     };
 
-    await db.insert(agnoWorkflows).values(newWorkflow);
+    await db
+      .insert(agnoWorkflows)
+      .values(newWorkflow)
+      .onConflictDoUpdate({
+        target: agnoWorkflows.id,
+        set: {
+          name: newWorkflow.name,
+          description: newWorkflow.description,
+          stepsJson: newWorkflow.stepsJson,
+          sessionStateJson: newWorkflow.sessionStateJson,
+          updatedAt: now,
+        },
+      });
     return NextResponse.json(newWorkflow, { status: 201 });
   } catch (error) {
     return NextResponse.json(
