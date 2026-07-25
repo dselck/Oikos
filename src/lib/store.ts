@@ -26,6 +26,10 @@ interface OikosState {
   addMessage: (message: ChatMessage) => void;
   updateLastMessage: (updater: (msg: ChatMessage) => ChatMessage) => void;
 
+  // Theme State
+  theme: "dark" | "light";
+  toggleTheme: () => void;
+
   // Trace Inspector Slide-Over Panel
   selectedTraceMessage: ChatMessage | null;
   isTraceOpen: boolean;
@@ -59,6 +63,9 @@ export const useOikosStore = create<OikosState>((set) => ({
       updated[updated.length - 1] = updater(updated[updated.length - 1]);
       return { messages: updated };
     }),
+
+  theme: "dark",
+  toggleTheme: () => set((state) => ({ theme: state.theme === "dark" ? "light" : "dark" })),
 
   selectedTraceMessage: null,
   isTraceOpen: false,

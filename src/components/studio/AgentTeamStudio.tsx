@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from "react";
 import { useOikosStore } from "@/lib/store";
 import { Agent } from "@/lib/types";
+import { AgentCardGrid, AgnoAgentRecord } from "./AgentCardGrid";
+import { TeamBuilderForm } from "./TeamBuilderForm";
 import {
   Plus,
   Trash2,
@@ -16,21 +18,6 @@ import {
   Sparkles,
   Search,
 } from "lucide-react";
-
-interface AgnoAgentRecord {
-  id: string;
-  name: string;
-  description: string | null;
-  modelProvider: string;
-  modelName: string;
-  instructionsJson: string | null;
-  systemPrompt: string | null;
-  toolsJson: string | null;
-  knowledgeBaseId: string | null;
-  isPublished: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
 
 interface AgnoTeamRecord {
   id: string;
@@ -66,11 +53,6 @@ export function AgentTeamStudio() {
 
   // Team Form State
   const [isEditingTeam, setIsEditingTeam] = useState(false);
-  const [teamName, setTeamName] = useState("");
-  const [teamDescription, setTeamDescription] = useState("");
-  const [leaderAgentId, setLeaderAgentId] = useState("");
-  const [memberAgentIds, setMemberAgentIds] = useState<string[]>([]);
-  const [executionMode, setExecutionMode] = useState("hierarchical");
 
   useEffect(() => {
     loadRegistry();
@@ -83,11 +65,7 @@ export function AgentTeamStudio() {
         fetch("/api/registry/teams"),
       ]);
       if (agentsRes.ok) {
-        const agentsData = await agentsRes.json();
-        setAgentsList(agentsData);
-        if (agentsData.length > 0 && !leaderAgentId) {
-          setLeaderAgentId(agentsData[0].id);
-        }
+        setAgentsList(await agentsRes.json());
       }
       if (teamsRes.ok) {
         setTeamsList(await teamsRes.json());
@@ -184,28 +162,21 @@ export function AgentTeamStudio() {
     setViewMode("playground");
   };
 
-  const handleSaveTeam = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!teamName.trim() || !leaderAgentId) return;
-
-    const payload = {
-      name: teamName,
-      description: teamDescription,
-      leaderAgentId,
-      memberAgentIds,
-      executionMode,
-    };
-
+  const handleSaveTeam = async (teamData: {
+    name: string;
+    description: string;
+    leaderAgentId: string;
+    memberAgentIds: string[];
+    executionMode: string;
+  }) => {
     const res = await fetch("/api/registry/teams", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(teamData),
     });
 
     if (res.ok) {
       setIsEditingTeam(false);
-      setTeamName("");
-      setTeamDescription("");
       await loadRegistry();
     }
   };
@@ -442,149 +413,21 @@ export function AgentTeamStudio() {
 
       {/* TEAM EDITOR MODAL */}
       {isEditingTeam && (
-        <form
-          onSubmit={handleSaveTeam}
-          className="rounded-2xl border border-purple-500/40 bg-white dark:bg-slate-900 p-6 shadow-xl space-y-4"
-        >
-          <h3 className="font-bold text-sm font-mono flex items-center gap-2">
-            <Users className="h-4 w-4 text-purple-500" />
-            Create Multi-Agent Team
-          </h3>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-            <div>
-              <label className="block font-semibold mb-1">Team Name</label>
-              <input
-                type="text"
-                placeholder="e.g. Research & Synthesis Team"
-                value={teamName}
-                onChange={(e) => setTeamName(e.target.value)}
-                required
-                className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block font-semibold mb-1">Leader Agent</label>
-              <select
-                value={leaderAgentId}
-                onChange={(e) => setLeaderAgentId(e.target.value)}
-                required
-                className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 outline-none font-mono"
-              >
-                {agentsList.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.name} ({a.modelName})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block font-semibold mb-1">Execution Mode</label>
-              <select
-                value={executionMode}
-                onChange={(e) => setExecutionMode(e.target.value)}
-                className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 outline-none font-mono"
-              >
-                <option value="hierarchical">Hierarchical (Leader Delegates)</option>
-                <option value="autonomous">Autonomous</option>
-                <option value="sequential">Sequential Workflow</option>
-                <option value="round_robin">Round Robin</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
-            <button
-              type="button"
-              onClick={() => setIsEditingTeam(false)}
-              className="rounded-lg border border-slate-300 dark:border-slate-700 px-4 py-2 text-xs font-medium"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="rounded-lg bg-purple-600 px-5 py-2 text-xs font-semibold text-white shadow-sm hover:bg-purple-500"
-            >
-              Save Team to Database
-            </button>
-          </div>
-        </form>
+        <TeamBuilderForm
+          agentsList={agentsList}
+          onSaveTeam={handleSaveTeam}
+          onCancel={() => setIsEditingTeam(false)}
+        />
       )}
 
       {/* SUB-TAB 1: AGENTS GRID */}
       {activeSubTab === "agents" && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredAgents.map((ag) => {
-            const tools: string[] = JSON.parse(ag.toolsJson || "[]");
-            return (
-              <div
-                key={ag.id}
-                className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm space-y-4 hover:border-slate-300 dark:hover:border-slate-700 transition"
-              >
-                <div className="flex items-start justify-between">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-bold text-sm">{ag.name}</h3>
-                      <span className="rounded bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 text-[10px] font-mono font-semibold text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800">
-                        {ag.modelProvider}:{ag.modelName}
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-500 mt-1 line-clamp-2">{ag.description || "No description provided."}</p>
-                  </div>
-
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => handleOpenEditAgent(ag)}
-                      title="Edit Agent"
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-                    >
-                      <Edit3 className="h-3.5 w-3.5" />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteAgent(ag.id)}
-                      title="Delete Agent"
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Tools Badge */}
-                <div className="flex items-center gap-1.5 flex-wrap text-[11px]">
-                  <Wrench className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                  {tools.length > 0 ? (
-                    tools.map((t) => (
-                      <span
-                        key={t}
-                        className="rounded bg-slate-100 dark:bg-slate-800 px-2 py-0.5 font-mono text-[10px] text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
-                      >
-                        {t}
-                      </span>
-                    ))
-                  ) : (
-                    <span className="text-slate-400 italic text-[11px]">No tools attached</span>
-                  )}
-                </div>
-
-                {/* Actions */}
-                <div className="flex items-center justify-between pt-3 border-t border-slate-200 dark:border-slate-800/80 text-xs">
-                  <span className="flex items-center gap-1 text-[11px] text-emerald-500 font-semibold">
-                    <CheckCircle2 className="h-3 w-3" /> DB Persisted
-                  </span>
-                  <button
-                    onClick={() => handleTestInPlayground(ag)}
-                    className="flex items-center gap-1 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline"
-                  >
-                    <Play className="h-3 w-3" /> Test in Playground
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        <AgentCardGrid
+          agentsList={filteredAgents}
+          onEditAgent={handleOpenEditAgent}
+          onDeleteAgent={handleDeleteAgent}
+          onTestInPlayground={handleTestInPlayground}
+        />
       )}
 
       {/* SUB-TAB 2: TEAMS GRID */}

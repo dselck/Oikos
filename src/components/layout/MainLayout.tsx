@@ -13,12 +13,7 @@ import { ControlPlaneView } from "@/components/control-plane/ControlPlaneView";
 import { useOikosStore } from "@/lib/store";
 
 export function MainLayout() {
-  const { viewMode } = useOikosStore();
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
-
-  const toggleTheme = () => {
-    setTheme(theme === "dark" ? "light" : "dark");
-  };
+  const { viewMode, theme, toggleTheme } = useOikosStore();
 
   const isDark = theme === "dark";
 
