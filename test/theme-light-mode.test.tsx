@@ -13,6 +13,7 @@ import { KnowledgeStudio } from "@/components/studio/KnowledgeStudio";
 import { SessionsMemoryStudio } from "@/components/studio/SessionsMemoryStudio";
 import { AgentTeamStudio } from "@/components/studio/AgentTeamStudio";
 import { Navbar } from "@/components/layout/Navbar";
+import { ToolExecutionTree } from "@/components/playground/ToolExecutionTree";
 
 describe("Theme Light Mode Conformance", () => {
   beforeEach(() => {
@@ -130,5 +131,21 @@ describe("Theme Light Mode Conformance", () => {
     const header = container.firstChild as HTMLElement;
     expect(header.className).toContain("bg-white/80");
     expect(header.className).toContain("dark:bg-slate-950/80");
+  });
+
+  it("renders ToolExecutionTree with light mode theme support", () => {
+    const mockExecutions = [
+      {
+        id: "tool-1",
+        toolName: "duckduckgo_search",
+        arguments: { query: "test" },
+        status: "success" as const,
+        startTime: Date.now(),
+      },
+    ];
+    const { container } = render(<ToolExecutionTree executions={mockExecutions} />);
+    const treeDiv = container.firstChild as HTMLElement;
+    expect(treeDiv.className).toContain("bg-slate-100/80");
+    expect(treeDiv.className).toContain("dark:bg-slate-950/60");
   });
 });

@@ -227,10 +227,10 @@ export function PlaygroundView() {
               <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 mb-4 shadow-xl shadow-cyan-500/5">
                 <Sparkles className="h-8 w-8" />
               </div>
-              <h2 className="text-xl font-bold text-white tracking-tight font-mono">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight font-mono">
                 Agno AgentOS Playground
               </h2>
-              <p className="mt-2 max-w-md text-xs text-slate-400 leading-relaxed">
+              <p className="mt-2 max-w-md text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
                 Send prompts, attach multi-modal documents/images, stream agent runs, and inspect real-time tool execution trees and telemetry.
               </p>
 
@@ -247,9 +247,9 @@ export function PlaygroundView() {
                     onClick={() => {
                       setInputMessage(prompt);
                     }}
-                    className="rounded-xl border border-slate-800 bg-slate-900/60 p-3 text-left text-xs text-slate-300 hover:border-cyan-500/50 hover:bg-slate-900 transition-all group"
+                    className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-3 text-left text-xs text-slate-700 dark:text-slate-300 hover:border-cyan-500/50 hover:bg-slate-50 dark:hover:bg-slate-900 transition-all group"
                   >
-                    <div className="flex items-center gap-2 text-cyan-400 font-mono text-[10px] mb-1">
+                    <div className="flex items-center gap-2 text-cyan-600 dark:text-cyan-400 font-mono text-[10px] mb-1">
                       <Terminal className="h-3 w-3" />
                       Quick Prompt #{i + 1}
                     </div>
@@ -267,7 +267,7 @@ export function PlaygroundView() {
                 }`}
               >
                 {msg.role === "assistant" && (
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">
                     <Cpu className="h-4 w-4" />
                   </div>
                 )}
@@ -277,7 +277,7 @@ export function PlaygroundView() {
                     className={`rounded-2xl px-4 py-3 text-xs leading-relaxed shadow-sm ${
                       msg.role === "user"
                         ? "bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-br-none"
-                        : "bg-slate-900 border border-slate-800 text-slate-200 rounded-bl-none"
+                        : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 rounded-bl-none shadow-sm"
                     }`}
                   >
                     {/* Render Tool Execution Tree if Assistant executed tools */}
@@ -297,18 +297,18 @@ export function PlaygroundView() {
                       <div className="flex items-center gap-3">
                         <span>{new Date(msg.timestamp).toLocaleTimeString()}</span>
                         {msg.metrics?.timeToFirstTokenMs ? (
-                          <span className="text-cyan-400">TTFT: {msg.metrics.timeToFirstTokenMs}ms</span>
+                          <span className="text-cyan-600 dark:text-cyan-400">TTFT: {msg.metrics.timeToFirstTokenMs}ms</span>
                         ) : null}
                         {msg.metrics?.completionTokens ? (
-                          <span className="text-emerald-400">Tokens: {msg.metrics.completionTokens}</span>
+                          <span className="text-emerald-600 dark:text-emerald-400">Tokens: {msg.metrics.completionTokens}</span>
                         ) : null}
                       </div>
 
                       <button
                         onClick={() => openTraceInspector(msg)}
-                        className="flex items-center gap-1 font-medium text-slate-400 hover:text-cyan-300 transition"
+                        className="flex items-center gap-1 font-medium text-slate-500 dark:text-slate-400 hover:text-cyan-600 dark:hover:text-cyan-300 transition"
                       >
-                        <Cpu className="h-3 w-3 text-cyan-400" />
+                        <Cpu className="h-3 w-3 text-cyan-600 dark:text-cyan-400" />
                         Inspect Trace
                       </button>
                     </div>
@@ -316,7 +316,7 @@ export function PlaygroundView() {
                 </div>
 
                 {msg.role === "user" && (
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-slate-800 text-slate-300 border border-slate-700">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700">
                     <User className="h-4 w-4" />
                   </div>
                 )}
@@ -328,7 +328,7 @@ export function PlaygroundView() {
       </div>
 
       {/* Footer Chat Input Box & Multi-modal Attachment Bar */}
-      <div className="border-t border-slate-800 bg-slate-950 p-4 sm:p-6 space-y-2">
+      <div className="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4 sm:p-6 space-y-2">
         {/* Hidden File Input */}
         <input
           ref={fileInputRef}
@@ -345,18 +345,18 @@ export function PlaygroundView() {
             {attachedFiles.map((file) => (
               <div
                 key={file.id}
-                className="flex items-center gap-2 rounded-lg bg-slate-900 border border-slate-700 px-3 py-1 text-xs text-slate-300 shrink-0 font-mono"
+                className="flex items-center gap-2 rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-3 py-1 text-xs text-slate-700 dark:text-slate-300 shrink-0 font-mono"
               >
                 {file.type.startsWith("image/") ? (
-                  <ImageIcon className="h-3.5 w-3.5 text-cyan-400" />
+                  <ImageIcon className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-400" />
                 ) : (
-                  <File className="h-3.5 w-3.5 text-amber-400" />
+                  <File className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
                 )}
                 <span className="max-w-[150px] truncate">{file.name}</span>
                 <button
                   type="button"
                   onClick={() => removeAttachment(file.id)}
-                  className="text-slate-500 hover:text-rose-400 transition"
+                  className="text-slate-400 hover:text-rose-500 transition"
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
@@ -366,11 +366,11 @@ export function PlaygroundView() {
         )}
 
         <form onSubmit={handleSubmit} className="mx-auto max-w-4xl">
-          <div className="relative flex items-center rounded-2xl border border-slate-800 bg-slate-900/90 shadow-xl focus-within:border-cyan-500/50 transition">
+          <div className="relative flex items-center rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900/90 shadow-xl focus-within:border-cyan-500/50 transition">
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="pl-4 pr-2 text-slate-500 hover:text-cyan-400 transition"
+              className="pl-4 pr-2 text-slate-400 hover:text-cyan-600 dark:hover:text-cyan-400 transition"
               title="Attach Multi-modal Document or Image"
             >
               <Paperclip className="h-4 w-4" />
@@ -382,7 +382,7 @@ export function PlaygroundView() {
               onChange={(e) => setInputMessage(e.target.value)}
               placeholder={`Message ${selectedAgent?.name || "AgentOS"}...`}
               disabled={isStreaming}
-              className="w-full bg-transparent px-2 py-3.5 text-xs text-white placeholder-slate-500 outline-none font-sans"
+              className="w-full bg-transparent px-2 py-3.5 text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 outline-none font-sans"
             />
 
             <button
@@ -400,7 +400,7 @@ export function PlaygroundView() {
 
           <div className="mt-2 flex items-center justify-between px-2 text-[10px] text-slate-500 font-mono">
             <span>
-              Connected to: <strong className="text-slate-400">{activeInstance?.name || "Local"}</strong> ({activeInstance?.baseUrl})
+              Connected to: <strong className="text-slate-700 dark:text-slate-400">{activeInstance?.name || "Local"}</strong> ({activeInstance?.baseUrl})
             </span>
             <span>Press Enter to send</span>
           </div>

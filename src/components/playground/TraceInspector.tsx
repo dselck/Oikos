@@ -96,22 +96,22 @@ export function TraceInspector() {
         </button>
       </div>
 
-      {/* Drawer Content */}
+      {/* Panel Content */}
       <div className="flex-1 overflow-y-auto p-5 font-sans">
         {activeTab === "events" && (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider font-mono">
+              <h4 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider font-mono">
                 Raw SSE Event Stream
               </h4>
 
               {/* Event Filter */}
               <div className="flex items-center gap-1 text-[11px] font-mono">
-                <Filter className="h-3 w-3 text-slate-500" />
+                <Filter className="h-3 w-3 text-slate-400" />
                 <select
                   value={filterType}
                   onChange={(e) => setFilterType(e.target.value)}
-                  className="bg-slate-900 text-slate-300 border border-slate-800 rounded px-2 py-0.5 outline-none"
+                  className="bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-800 rounded px-2 py-0.5 outline-none"
                 >
                   <option value="all">All Events</option>
                   <option value="tool">Tool Events</option>
@@ -124,21 +124,21 @@ export function TraceInspector() {
               filteredEvents.map((evt, idx) => (
                 <div
                   key={idx}
-                  className="rounded-lg border border-slate-800 bg-slate-900/80 p-3 font-mono text-[11px]"
+                  className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/80 p-3 font-mono text-[11px]"
                 >
-                  <div className="flex items-center justify-between text-slate-400 mb-1">
-                    <span className="text-cyan-400 font-bold">Event #{idx + 1}</span>
+                  <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-1">
+                    <span className="text-cyan-600 dark:text-cyan-400 font-bold">Event #{idx + 1}</span>
                     <span className="text-[10px] text-slate-400">
                       {String((evt as Record<string, unknown>).type || (evt as Record<string, unknown>).event || "chunk")}
                     </span>
                   </div>
-                  <pre className="overflow-x-auto text-slate-300">
+                  <pre className="overflow-x-auto text-slate-800 dark:text-slate-300">
                     {JSON.stringify(evt, null, 2)}
                   </pre>
                 </div>
               ))
             ) : (
-              <div className="rounded-lg border border-dashed border-slate-800 p-8 text-center text-xs text-slate-500">
+              <div className="rounded-lg border border-dashed border-slate-200 dark:border-slate-800 p-8 text-center text-xs text-slate-500">
                 No matching SSE event stream logs recorded.
               </div>
             )}
@@ -147,32 +147,32 @@ export function TraceInspector() {
 
         {activeTab === "tools" && (
           <div className="space-y-3">
-            <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider font-mono">
+            <h4 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider font-mono">
               Tool Call Parameters & Returns
             </h4>
             {selectedTraceMessage.toolExecutions && selectedTraceMessage.toolExecutions.length > 0 ? (
               selectedTraceMessage.toolExecutions.map((t) => (
-                <div key={t.id} className="rounded-lg border border-slate-800 bg-slate-900 p-4 space-y-2">
+                <div key={t.id} className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-4 space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="font-mono font-bold text-cyan-400 text-xs">{t.toolName}</span>
-                    <span className="text-[10px] text-emerald-400 font-semibold font-mono">{t.status}</span>
+                    <span className="font-mono font-bold text-cyan-600 dark:text-cyan-400 text-xs">{t.toolName}</span>
+                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold font-mono">{t.status}</span>
                   </div>
-                  <div className="text-[11px] text-slate-300 font-mono">
-                    <div className="text-slate-400 font-sans font-semibold">Inputs:</div>
-                    <pre className="bg-slate-950 p-2 rounded mt-1 overflow-x-auto text-cyan-200">
+                  <div className="text-[11px] text-slate-800 dark:text-slate-300 font-mono">
+                    <div className="text-slate-500 dark:text-slate-400 font-sans font-semibold">Inputs:</div>
+                    <pre className="bg-white dark:bg-slate-950 p-2 rounded mt-1 overflow-x-auto text-cyan-700 dark:text-cyan-200 border border-slate-200 dark:border-slate-800">
                       {JSON.stringify(t.arguments || {}, null, 2)}
                     </pre>
                   </div>
-                  <div className="text-[11px] text-slate-300 font-mono">
-                    <div className="text-slate-400 font-sans font-semibold">Output:</div>
-                    <pre className="bg-slate-950 p-2 rounded mt-1 overflow-x-auto text-emerald-200">
+                  <div className="text-[11px] text-slate-800 dark:text-slate-300 font-mono">
+                    <div className="text-slate-500 dark:text-slate-400 font-sans font-semibold">Output:</div>
+                    <pre className="bg-white dark:bg-slate-950 p-2 rounded mt-1 overflow-x-auto text-emerald-700 dark:text-emerald-200 border border-slate-200 dark:border-slate-800">
                       {JSON.stringify(t.output || {}, null, 2)}
                     </pre>
                   </div>
                 </div>
               ))
             ) : (
-              <div className="rounded-lg border border-dashed border-slate-800 p-8 text-center text-xs text-slate-500">
+              <div className="rounded-lg border border-dashed border-slate-200 dark:border-slate-800 p-8 text-center text-xs text-slate-500">
                 No tool executions during this message turn.
               </div>
             )}
@@ -181,39 +181,39 @@ export function TraceInspector() {
 
         {activeTab === "metrics" && (
           <div className="space-y-4">
-            <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider font-mono">
+            <h4 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider font-mono">
               Performance & Latency Telemetry
             </h4>
             <div className="grid grid-cols-2 gap-3 text-xs font-mono">
-              <div className="rounded-lg border border-slate-800 bg-slate-900 p-3">
-                <span className="text-slate-400 text-[10px] uppercase">TTFT (Time To First Token)</span>
-                <p className="text-cyan-400 font-bold text-sm mt-1">
+              <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-3">
+                <span className="text-slate-500 dark:text-slate-400 text-[10px] uppercase">TTFT (Time To First Token)</span>
+                <p className="text-cyan-600 dark:text-cyan-400 font-bold text-sm mt-1">
                   {selectedTraceMessage.metrics?.timeToFirstTokenMs ? `${selectedTraceMessage.metrics.timeToFirstTokenMs}ms` : "N/A"}
                 </p>
               </div>
-              <div className="rounded-lg border border-slate-800 bg-slate-900 p-3">
-                <span className="text-slate-400 text-[10px] uppercase">Completion Tokens</span>
-                <p className="text-emerald-400 font-bold text-sm mt-1">
+              <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-3">
+                <span className="text-slate-500 dark:text-slate-400 text-[10px] uppercase">Completion Tokens</span>
+                <p className="text-emerald-600 dark:text-emerald-400 font-bold text-sm mt-1">
                   {selectedTraceMessage.metrics?.completionTokens || "N/A"} tokens
                 </p>
               </div>
-              <div className="rounded-lg border border-slate-800 bg-slate-900 p-3">
-                <span className="text-slate-400 text-[10px] uppercase">Tools Executed</span>
-                <p className="text-indigo-400 font-bold text-sm mt-1">
+              <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-3">
+                <span className="text-slate-500 dark:text-slate-400 text-[10px] uppercase">Tools Executed</span>
+                <p className="text-indigo-600 dark:text-indigo-400 font-bold text-sm mt-1">
                   {selectedTraceMessage.toolExecutions?.length || 0} Invocations
                 </p>
               </div>
-              <div className="rounded-lg border border-slate-800 bg-slate-900 p-3">
-                <span className="text-slate-400 text-[10px] uppercase">Runtime Engine</span>
-                <p className="text-purple-400 font-bold text-xs mt-1">Agno AgentOS</p>
+              <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-3">
+                <span className="text-slate-500 dark:text-slate-400 text-[10px] uppercase">Runtime Engine</span>
+                <p className="text-purple-600 dark:text-purple-400 font-bold text-xs mt-1">Agno AgentOS</p>
               </div>
             </div>
 
-            <div className="rounded-lg border border-slate-800 bg-slate-900 p-3">
-              <span className="text-slate-400 text-[10px] uppercase flex items-center gap-1 font-mono">
+            <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-3">
+              <span className="text-slate-500 dark:text-slate-400 text-[10px] uppercase flex items-center gap-1 font-mono">
                 <FileText className="h-3 w-3" /> Response Output Size
               </span>
-              <p className="font-mono text-slate-200 mt-1 text-xs">
+              <p className="font-mono text-slate-800 dark:text-slate-200 mt-1 text-xs">
                 {selectedTraceMessage.content.length} characters
               </p>
             </div>
