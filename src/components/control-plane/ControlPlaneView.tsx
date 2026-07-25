@@ -123,46 +123,46 @@ export function ControlPlaneView() {
       {isAdding && (
         <form
           onSubmit={handleAddInstance}
-          className="rounded-2xl border border-indigo-500/30 bg-slate-900/90 p-6 shadow-2xl space-y-4 backdrop-blur-xl"
+          className="rounded-2xl border border-indigo-500/30 bg-white dark:bg-slate-900/90 p-6 shadow-2xl space-y-4 backdrop-blur-xl"
         >
-          <h3 className="text-sm font-bold text-white flex items-center gap-2">
-            <Server className="h-4 w-4 text-indigo-400" />
+          <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <Server className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
             Configure New AgentOS Instance
           </h3>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
             <div>
-              <label className="block text-slate-400 font-semibold mb-1">Instance Name</label>
+              <label className="block text-slate-600 dark:text-slate-400 font-semibold mb-1">Instance Name</label>
               <input
                 type="text"
                 placeholder="e.g. Local Production AgentOS"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
-                className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-slate-200 outline-none focus:border-indigo-500"
+                className="w-full rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-3 py-2 text-slate-900 dark:text-slate-200 outline-none focus:border-indigo-500"
               />
             </div>
 
             <div>
-              <label className="block text-slate-400 font-semibold mb-1">Base Endpoint URL</label>
+              <label className="block text-slate-600 dark:text-slate-400 font-semibold mb-1">Base Endpoint URL</label>
               <input
                 type="url"
                 placeholder="http://localhost:8000"
                 value={baseUrl}
                 onChange={(e) => setBaseUrl(e.target.value)}
                 required
-                className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-slate-200 outline-none focus:border-indigo-500 font-mono"
+                className="w-full rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-3 py-2 text-slate-900 dark:text-slate-200 outline-none focus:border-indigo-500 font-mono"
               />
             </div>
 
             <div>
-              <label className="block text-slate-400 font-semibold mb-1">API Key (Optional)</label>
+              <label className="block text-slate-600 dark:text-slate-400 font-semibold mb-1">API Key (Optional)</label>
               <input
                 type="password"
                 placeholder="Agno bearer / API token"
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
-                className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-slate-200 outline-none focus:border-indigo-500 font-mono"
+                className="w-full rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-3 py-2 text-slate-900 dark:text-slate-200 outline-none focus:border-indigo-500 font-mono"
               />
             </div>
 
@@ -172,9 +172,9 @@ export function ControlPlaneView() {
                 id="isDefault"
                 checked={isDefault}
                 onChange={(e) => setIsDefault(e.target.checked)}
-                className="rounded border-slate-700 bg-slate-950 text-indigo-500 focus:ring-indigo-500"
+                className="rounded border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-indigo-500 focus:ring-indigo-500"
               />
-              <label htmlFor="isDefault" className="text-xs text-slate-300 font-medium">
+              <label htmlFor="isDefault" className="text-xs text-slate-700 dark:text-slate-300 font-medium">
                 Set as default startup instance
               </label>
             </div>
@@ -184,7 +184,7 @@ export function ControlPlaneView() {
             <button
               type="button"
               onClick={() => setIsAdding(false)}
-              className="rounded-xl border border-slate-800 bg-slate-950 px-4 py-2 text-xs font-medium text-slate-400 hover:text-white"
+              className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 px-4 py-2 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
             >
               Cancel
             </button>
@@ -201,8 +201,8 @@ export function ControlPlaneView() {
 
       {/* Configured Instances Grid */}
       <div className="space-y-4">
-        <h2 className="text-sm font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
-          <Server className="h-4 w-4 text-cyan-400" />
+        <h2 className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-2">
+          <Server className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
           Configured AgentOS Instances ({instances.length})
         </h2>
 
@@ -212,22 +212,22 @@ export function ControlPlaneView() {
               key={inst.id}
               className={`rounded-2xl border p-5 transition-all ${
                 activeInstance?.id === inst.id
-                  ? "border-cyan-500/50 bg-slate-900/90 shadow-xl shadow-cyan-500/5"
-                  : "border-slate-800 bg-slate-900/50 hover:border-slate-700"
+                  ? "border-cyan-500/50 bg-white dark:bg-slate-900/90 shadow-xl shadow-cyan-500/5"
+                  : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/50 hover:border-slate-300 dark:hover:border-slate-700"
               }`}
             >
               <div className="flex items-start justify-between">
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-white text-sm">{inst.name}</h3>
+                    <h3 className="font-bold text-slate-900 dark:text-white text-sm">{inst.name}</h3>
                     {inst.isDefault && (
-                      <span className="rounded bg-indigo-950 px-2 py-0.5 text-[10px] font-semibold text-indigo-400 border border-indigo-800">
+                      <span className="rounded bg-indigo-100 dark:bg-indigo-950 px-2 py-0.5 text-[10px] font-semibold text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800">
                         Default
                       </span>
                     )}
                   </div>
-                  <p className="mt-1 font-mono text-xs text-cyan-400 flex items-center gap-1.5">
-                    <Globe className="h-3.5 w-3.5 text-slate-500" />
+                  <p className="mt-1 font-mono text-xs text-cyan-600 dark:text-cyan-400 flex items-center gap-1.5">
+                    <Globe className="h-3.5 w-3.5 text-slate-400" />
                     {inst.baseUrl}
                   </p>
                 </div>
@@ -236,40 +236,40 @@ export function ControlPlaneView() {
                   <button
                     onClick={() => handleTestHealth(inst)}
                     title="Ping Connection"
-                    className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-800 text-slate-400 hover:text-white transition"
+                    className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition"
                   >
                     <RefreshCw className="h-3.5 w-3.5" />
                   </button>
                   <button
                     onClick={() => handleDelete(inst.id)}
                     title="Delete Config"
-                    className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-800 text-slate-400 hover:text-rose-400 transition"
+                    className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-rose-500 transition"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
                 </div>
               </div>
 
-              <div className="mt-4 flex items-center justify-between pt-3 border-t border-slate-800/80 text-xs">
+              <div className="mt-4 flex items-center justify-between pt-3 border-t border-slate-200 dark:border-slate-800/80 text-xs">
                 <div className="flex items-center gap-1.5">
                   {inst.status === "connected" ? (
-                    <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-400">
+                    <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
                       <CheckCircle2 className="h-3.5 w-3.5" /> Connected
                     </span>
                   ) : (
-                    <span className="flex items-center gap-1 text-[11px] font-semibold text-amber-400">
+                    <span className="flex items-center gap-1 text-[11px] font-semibold text-amber-600 dark:text-amber-400">
                       <AlertCircle className="h-3.5 w-3.5" /> Standby
                     </span>
                   )}
                 </div>
 
                 {inst.apiKey ? (
-                  <span className="flex items-center gap-1 text-[11px] text-slate-400">
-                    <Key className="h-3 w-3 text-amber-400" /> Auth Token Set
+                  <span className="flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400">
+                    <Key className="h-3 w-3 text-amber-500" /> Auth Token Set
                   </span>
                 ) : (
                   <span className="flex items-center gap-1 text-[11px] text-slate-500">
-                    <ShieldCheck className="h-3 w-3 text-slate-600" /> Public / No Key
+                    <ShieldCheck className="h-3 w-3 text-slate-400" /> Public / No Key
                   </span>
                 )}
               </div>
@@ -280,21 +280,21 @@ export function ControlPlaneView() {
 
       {/* Discovered Agents Overview */}
       <div className="space-y-4">
-        <h2 className="text-sm font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
-          <Cpu className="h-4 w-4 text-indigo-400" />
+        <h2 className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-2">
+          <Cpu className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
           Discovered Agents ({agents.length})
         </h2>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {agents.map((ag) => (
-            <div key={ag.id} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 space-y-2">
+            <div key={ag.id} className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-4 space-y-2 shadow-sm">
               <div className="flex items-center justify-between">
-                <span className="font-bold text-white text-xs">{ag.name}</span>
-                <span className="font-mono text-[10px] text-indigo-400 bg-indigo-950 px-2 py-0.5 rounded border border-indigo-800">
+                <span className="font-bold text-slate-900 dark:text-white text-xs">{ag.name}</span>
+                <span className="font-mono text-[10px] text-indigo-700 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950 px-2 py-0.5 rounded border border-indigo-200 dark:border-indigo-800">
                   {ag.model || "Agno"}
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400 leading-normal">{ag.description}</p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-normal">{ag.description}</p>
               <div className="pt-2 flex items-center gap-1 text-[10px] text-slate-500">
                 <Wrench className="h-3 w-3 text-slate-400" />
                 <span>Tools: {ag.tools?.join(", ") || "None"}</span>
@@ -305,25 +305,25 @@ export function ControlPlaneView() {
       </div>
 
       {/* System Telemetry & ADR Status */}
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 space-y-3">
-        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-          <Cpu className="h-4 w-4 text-cyan-400" />
+      <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/40 p-6 space-y-3 shadow-sm">
+        <h3 className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider flex items-center gap-2">
+          <Cpu className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
           System Architecture Status
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-          <div className="rounded-xl bg-slate-950 p-3 border border-slate-800">
+          <div className="rounded-xl bg-slate-50 dark:bg-slate-950 p-3 border border-slate-200 dark:border-slate-800">
             <span className="text-slate-500 text-[10px] uppercase">Storage Engine</span>
-            <p className="font-mono text-cyan-400 font-semibold mt-1">SQLite + Drizzle ORM</p>
+            <p className="font-mono text-cyan-600 dark:text-cyan-400 font-semibold mt-1">SQLite + Drizzle ORM</p>
             <p className="text-[10px] text-slate-500">data/oikos.db</p>
           </div>
-          <div className="rounded-xl bg-slate-950 p-3 border border-slate-800">
+          <div className="rounded-xl bg-slate-50 dark:bg-slate-950 p-3 border border-slate-200 dark:border-slate-800">
             <span className="text-slate-500 text-[10px] uppercase">Full-Stack Framework</span>
-            <p className="font-mono text-indigo-400 font-semibold mt-1">Next.js 19 App Router</p>
+            <p className="font-mono text-indigo-600 dark:text-indigo-400 font-semibold mt-1">Next.js 19 App Router</p>
             <p className="text-[10px] text-slate-500">Route Handlers & SSE Proxy</p>
           </div>
-          <div className="rounded-xl bg-slate-950 p-3 border border-slate-800">
+          <div className="rounded-xl bg-slate-50 dark:bg-slate-950 p-3 border border-slate-200 dark:border-slate-800">
             <span className="text-slate-500 text-[10px] uppercase">Architecture Records</span>
-            <p className="font-mono text-emerald-400 font-semibold mt-1">ADR-0001, 0002, 0003</p>
+            <p className="font-mono text-emerald-600 dark:text-emerald-400 font-semibold mt-1">ADR-0001, 0002, 0003</p>
             <p className="text-[10px] text-slate-500">docs/adr/</p>
           </div>
         </div>

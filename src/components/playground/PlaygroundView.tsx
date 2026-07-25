@@ -196,19 +196,19 @@ export function PlaygroundView() {
         {/* Streaming Rate & Tools Badge */}
         <div className="flex items-center gap-3 text-xs">
           {tokensPerSecond !== null && (
-            <span className="flex items-center gap-1 text-[11px] font-mono text-cyan-400 bg-cyan-950/60 px-2 py-0.5 rounded border border-cyan-800 animate-pulse">
+            <span className="flex items-center gap-1 text-[11px] font-mono text-cyan-700 dark:text-cyan-400 bg-cyan-100 dark:bg-cyan-950/60 px-2 py-0.5 rounded border border-cyan-300 dark:border-cyan-800 animate-pulse">
               <Zap className="h-3 w-3" /> {tokensPerSecond} tokens/sec
             </span>
           )}
 
           {selectedAgent && (
-            <div className="hidden sm:flex items-center gap-2 text-[11px] text-slate-400">
-              <Wrench className="h-3.5 w-3.5 text-cyan-400" />
+            <div className="hidden sm:flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400">
+              <Wrench className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-400" />
               <div className="flex gap-1.5">
                 {selectedAgent.tools?.map((t) => (
                   <span
                     key={t}
-                    className="rounded bg-slate-800/80 px-2 py-0.5 font-mono text-[10px] text-slate-300 border border-slate-700/50"
+                    className="rounded bg-slate-100 dark:bg-slate-800/80 px-2 py-0.5 font-mono text-[10px] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700/50"
                   >
                     {t}
                   </span>
