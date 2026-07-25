@@ -15,7 +15,7 @@ export function StatusBar({ currentTheme }: Props) {
   return (
     <footer
       className={`h-7 border-t flex items-center justify-between px-4 font-mono text-[10px] select-none transition-colors ${
-        isDark ? "border-slate-800 bg-slate-900 text-slate-400" : "border-slate-200 bg-slate-200 text-slate-700"
+        isDark ? "border-slate-800 bg-slate-950 text-slate-400" : "border-slate-200 bg-white text-slate-700"
       }`}
     >
       <div className="flex items-center gap-4">

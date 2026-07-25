@@ -13,7 +13,7 @@ export function TraceStreamPane({ currentTheme }: Props) {
   return (
     <aside
       className={`w-80 border-l flex flex-col shrink-0 transition-colors ${
-        isDark ? "border-slate-800 bg-slate-950" : "border-slate-200 bg-slate-50"
+        isDark ? "border-slate-800 bg-slate-950 text-slate-100" : "border-slate-200 bg-white text-slate-900"
       }`}
     >
       <div

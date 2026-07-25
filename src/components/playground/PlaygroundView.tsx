@@ -167,22 +167,22 @@ export function PlaygroundView() {
   };
 
   return (
-    <div className="relative flex h-[calc(100vh-4rem)] flex-col bg-slate-950 text-slate-100 font-sans">
+    <div className="relative flex h-[calc(100vh-4rem)] flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans transition-colors">
       {/* Playground Header: Agent Selector & Status */}
-      <div className="flex h-14 items-center justify-between border-b border-slate-800/80 bg-slate-900/40 px-6 backdrop-blur">
+      <div className="flex h-14 items-center justify-between border-b border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/40 px-6 backdrop-blur">
         <div className="flex items-center gap-3">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">
             <Cpu className="h-4 w-4" />
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-slate-400">Target Agent:</span>
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Target Agent:</span>
             <select
               value={selectedAgent?.id || ""}
               onChange={(e) => {
                 const a = agents.find((ag) => ag.id === e.target.value);
                 if (a) setSelectedAgent(a);
               }}
-              className="rounded-lg bg-slate-900 px-3 py-1 text-xs font-semibold text-cyan-300 border border-slate-700 outline-none cursor-pointer hover:border-slate-600 font-mono"
+              className="rounded-lg bg-slate-100 dark:bg-slate-900 px-3 py-1 text-xs font-semibold text-cyan-600 dark:text-cyan-300 border border-slate-200 dark:border-slate-700 outline-none cursor-pointer hover:border-slate-300 dark:hover:border-slate-600 font-mono"
             >
               {agents.map((ag) => (
                 <option key={ag.id} value={ag.id} className="bg-slate-900 text-slate-200">

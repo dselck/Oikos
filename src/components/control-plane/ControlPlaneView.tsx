@@ -95,16 +95,16 @@ export function ControlPlaneView() {
   };
 
   return (
-    <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 space-y-8 bg-slate-950 text-slate-100 font-sans min-h-[calc(100vh-4rem)]">
+    <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 space-y-8 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans min-h-[calc(100vh-4rem)] transition-colors">
       {/* Control Plane Header Banner */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 rounded-2xl border border-slate-800 bg-gradient-to-r from-slate-900 via-indigo-950/40 to-slate-900 p-6 shadow-xl">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-gradient-to-r dark:from-slate-900 dark:via-indigo-950/40 dark:to-slate-900 p-6 shadow-xl">
         <div className="flex items-center gap-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 shadow-lg shadow-indigo-500/10">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 shadow-lg shadow-indigo-500/10">
             <Sliders className="h-6 w-6" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-white tracking-tight">Oikos Control Plane</h1>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Oikos Control Plane</h1>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
               Manage Agno AgentOS instance configurations, connection credentials, and telemetry settings.
             </p>
           </div>
