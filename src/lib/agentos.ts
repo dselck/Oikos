@@ -9,7 +9,6 @@ export async function checkInstanceHealth(instance: InstanceConfig): Promise<"co
     });
     if (res.ok) return "connected";
     
-    // Also try root / or /v1/health
     const resV1 = await fetch("/api/proxy/v1/health", {
       headers: {
         "x-instance-id": instance.id,
@@ -22,59 +21,45 @@ export async function checkInstanceHealth(instance: InstanceConfig): Promise<"co
 }
 
 export async function fetchAgents(instanceId: string): Promise<Agent[]> {
-  try {
-    const res = await fetch("/api/proxy/v1/agents", {
-      headers: {
-        "x-instance-id": instanceId,
-      },
-    });
+  const res = await fetch("/api/proxy/v1/agents", {
+    headers: {
+      "x-instance-id": instanceId,
+    },
+  });
 
-    if (!res.ok) {
-      // Fallback mock agents if AgentOS API returns empty or demo mode
-      return getFallbackAgents();
-    }
-
-    const data = await res.json();
-    if (Array.isArray(data)) {
-      return data.map((a) => ({
-        id: a.agent_id || a.id || "default-agent",
-        name: a.name || "Agno Agent",
-        description: a.description || "AgentOS Autonomous Agent",
-        model: a.model || "gpt-4o",
-        tools: a.tools || [],
-      }));
-    }
-
-    return getFallbackAgents();
-  } catch {
-    return getFallbackAgents();
+  if (!res.ok) {
+    throw new Error(`AgentOS API returned status ${res.status}: ${res.statusText}`);
   }
+
+  const data = await res.json();
+  if (Array.isArray(data)) {
+    return data.map((a) => ({
+      id: a.agent_id || a.id || "default-agent",
+      name: a.name || "Agno Agent",
+      description: a.description || "AgentOS Autonomous Agent",
+      model: a.model || "gpt-4o",
+      tools: a.tools || [],
+    }));
+  }
+
+  return [];
 }
 
-export function getFallbackAgents(): Agent[] {
-  return [
-    {
-      id: "agent",
-      name: "General Agent",
-      description: "General-purpose Agno agent with Web Search & Python Code Tools",
-      model: "gpt-4o",
-      tools: ["duckduckgo_search", "python_interpreter"],
+export async function createAgentOnInstance(instanceId: string, agentData: Record<string, unknown>): Promise<Agent> {
+  const res = await fetch("/api/proxy/v1/agents", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-instance-id": instanceId,
     },
-    {
-      id: "researcher",
-      name: "Deep Researcher",
-      description: "Autonomous researcher agent for multi-step information gathering",
-      model: "claude-3-5-sonnet",
-      tools: ["web_search", "arxiv_reader", "summarizer"],
-    },
-    {
-      id: "code-executor",
-      name: "Code Analyst",
-      description: "Executes and analyzes Python & SQL queries in sandboxed environment",
-      model: "gpt-4o",
-      tools: ["python_compiler", "sql_runner"],
-    },
-  ];
+    body: JSON.stringify(agentData),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Failed to create agent on AgentOS (${res.status})`);
+  }
+
+  return await res.json();
 }
 
 export async function streamAgentRun(params: {
@@ -104,9 +89,8 @@ export async function streamAgentRun(params: {
   });
 
   if (!res.ok || !res.body) {
-    // If endpoint is not found, fallback to simulated streaming for design demonstration
-    await simulateAgentResponse(message, onChunk, onToolCall, onRawEvent);
-    return;
+    const errorText = await res.text().catch(() => "Unknown error");
+    throw new Error(`AgentOS execution failed (${res.status}): ${errorText}`);
   }
 
   const reader = res.body.getReader();
@@ -167,52 +151,4 @@ export async function streamAgentRun(params: {
       }
     }
   }
-}
-
-async function simulateAgentResponse(
-  userQuery: string,
-  onChunk: (text: string) => void,
-  onToolCall: (toolCall: ToolCallExecution) => void,
-  onRawEvent: (event: Record<string, unknown>) => void
-) {
-  const toolStartTime = Date.now();
-  
-  onRawEvent({ type: "stream_start", timestamp: new Date().toISOString() });
-
-  // Simulate initial tool call
-  const toolCall: ToolCallExecution = {
-    id: `tool-${Date.now()}`,
-    toolName: "duckduckgo_search",
-    arguments: { query: userQuery },
-    status: "running",
-    startTime: toolStartTime,
-  };
-  onToolCall(toolCall);
-  onRawEvent({ type: "tool_execution_start", tool: "duckduckgo_search" });
-
-  await new Promise((r) => setTimeout(r, 600));
-
-  onToolCall({
-    ...toolCall,
-    status: "success",
-    output: { results_count: 5, top_result: "Agno AgentOS multi-agent orchestrator documentation" },
-    endTime: Date.now(),
-    durationMs: 600,
-  });
-  onRawEvent({ type: "tool_execution_end", tool: "duckduckgo_search", duration: 600 });
-
-  const responseText = `I processed your request: **"${userQuery}"** using **Agno AgentOS**.\n\n` +
-    `Here is what I found:\n` +
-    `- **Agent OS Runtime**: Connected & healthy.\n` +
-    `- **Tool Executions**: \`duckduckgo_search\` executed successfully (600ms).\n` +
-    `- **Session State**: Persisted in Oikos SQLite database.\n\n` +
-    `You can inspect the full telemetry payload and event events in the **Trace Inspector** drawer!`;
-
-  const words = responseText.split(" ");
-  for (const word of words) {
-    onChunk(word + " ");
-    await new Promise((r) => setTimeout(r, 30));
-  }
-
-  onRawEvent({ type: "stream_end", timestamp: new Date().toISOString() });
 }

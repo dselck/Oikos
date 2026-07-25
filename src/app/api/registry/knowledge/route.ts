@@ -1,74 +1,57 @@
 import { NextResponse } from "next/server";
-import { db, initDatabase } from "@/db";
-import { agnoKnowledgeBases } from "@/db/schema";
+import { db } from "@/db";
+import { instances } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
-initDatabase();
+async function getTargetInstance(req: Request) {
+  const instanceId = req.headers.get("x-instance-id");
+  if (!instanceId) return null;
+  const match = await db.select().from(instances).where(eq(instances.id, instanceId)).limit(1);
+  return match[0] || null;
+}
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    const list = await db.select().from(agnoKnowledgeBases);
-    return NextResponse.json(list);
-  } catch (error) {
-    return NextResponse.json(
-      { error: "Failed to fetch knowledge bases from database", details: String(error) },
-      { status: 500 }
-    );
+    const target = await getTargetInstance(req);
+    if (!target) {
+      return NextResponse.json([], { status: 200 });
+    }
+
+    const res = await fetch(`${target.baseUrl}/v1/knowledge-bases`, {
+      headers: target.apiKey ? { Authorization: `Bearer ${target.apiKey}` } : {},
+    });
+
+    if (!res.ok) {
+      return NextResponse.json([], { status: res.status });
+    }
+
+    const data = await res.json();
+    return NextResponse.json(data);
+  } catch (err) {
+    return NextResponse.json({ error: String(err) }, { status: 500 });
   }
 }
 
 export async function POST(req: Request) {
   try {
+    const target = await getTargetInstance(req);
+    if (!target) {
+      return NextResponse.json({ error: "No active AgentOS instance specified" }, { status: 400 });
+    }
+
     const body = await req.json();
-    const { name, description, vectorDbType, tableOrCollection, embedderModel } = body;
+    const res = await fetch(`${target.baseUrl}/v1/knowledge-bases`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(target.apiKey ? { Authorization: `Bearer ${target.apiKey}` } : {}),
+      },
+      body: JSON.stringify(body),
+    });
 
-    if (!name || !tableOrCollection) {
-      return NextResponse.json(
-        { error: "Knowledge base name and collection/table name are required" },
-        { status: 400 }
-      );
-    }
-
-    const id = body.id || `kb-${Date.now()}`;
-    const now = new Date().toISOString();
-
-    const newKb = {
-      id,
-      name,
-      description: description || "",
-      vectorDbType: vectorDbType || "sqlite_vec",
-      tableOrCollection,
-      embedderModel: embedderModel || "text-embedding-3-small",
-      documentCount: 0,
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    await db.insert(agnoKnowledgeBases).values(newKb);
-    return NextResponse.json(newKb, { status: 201 });
-  } catch (error) {
-    return NextResponse.json(
-      { error: "Failed to create knowledge base in database", details: String(error) },
-      { status: 500 }
-    );
-  }
-}
-
-export async function DELETE(req: Request) {
-  try {
-    const { searchParams } = new URL(req.url);
-    const id = searchParams.get("id");
-
-    if (!id) {
-      return NextResponse.json({ error: "Knowledge base ID is required" }, { status: 400 });
-    }
-
-    await db.delete(agnoKnowledgeBases).where(eq(agnoKnowledgeBases.id, id));
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    return NextResponse.json(
-      { error: "Failed to delete knowledge base from database", details: String(error) },
-      { status: 500 }
-    );
+    const data = await res.json();
+    return NextResponse.json(data, { status: res.status });
+  } catch (err) {
+    return NextResponse.json({ error: String(err) }, { status: 500 });
   }
 }

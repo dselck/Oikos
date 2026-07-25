@@ -65,23 +65,8 @@ export function WorkflowStudio() {
     setEditingId(null);
     setWorkflowName("");
     setWorkflowDescription("");
-    setSteps([
-      {
-        id: `step-1`,
-        type: "agent",
-        name: "Research Step",
-        targetId: "researcher",
-        promptTemplate: "Gather research notes on {{input_topic}}",
-      },
-      {
-        id: `step-2`,
-        type: "agent",
-        name: "Synthesis Step",
-        targetId: "agent",
-        promptTemplate: "Summarize research findings into a clean report",
-      },
-    ]);
-    setSessionStateText('{\n  "input_topic": "Agno AgentOS Multi-Agent Systems"\n}');
+    setSteps([]);
+    setSessionStateText("{}");
     setIsEditing(true);
   };
 
@@ -90,8 +75,8 @@ export function WorkflowStudio() {
       id: `step-${Date.now()}`,
       type: "agent",
       name: `Workflow Step #${steps.length + 1}`,
-      targetId: "agent",
-      promptTemplate: "Process output from previous step",
+      targetId: "",
+      promptTemplate: "",
     };
     setSteps([...steps, newStep]);
   };

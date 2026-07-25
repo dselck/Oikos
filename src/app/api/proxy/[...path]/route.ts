@@ -43,8 +43,9 @@ export async function DELETE(req: NextRequest, context: { params: Promise<{ path
   return handleProxy(req, context);
 }
 
-async function handleProxy(req: NextRequest, context: { params: Promise<{ path: string[] }> }) {
-  const { path } = await context.params;
+async function handleProxy(req: NextRequest, context: { params: Promise<{ path?: string[] }> }) {
+  const resolvedParams = await context.params;
+  const path = resolvedParams?.path;
   const targetInstance = await getTargetInstance(req);
 
   if (!targetInstance) {
@@ -54,7 +55,7 @@ async function handleProxy(req: NextRequest, context: { params: Promise<{ path: 
     );
   }
 
-  const targetPath = path ? path.join("/") : "";
+  const targetPath = Array.isArray(path) ? path.join("/") : "";
   const targetUrl = `${targetInstance.baseUrl}/${targetPath}${req.nextUrl.search}`;
 
   const headers = new Headers(req.headers);
@@ -67,7 +68,7 @@ async function handleProxy(req: NextRequest, context: { params: Promise<{ path: 
   }
 
   try {
-    const body = req.method !== "GET" && req.method !== "HEAD" ? await req.arrayBuffer() : undefined;
+    const body = req.method !== "GET" && req.method !== "HEAD" ? req.body : undefined;
 
     const response = await fetch(targetUrl, {
       method: req.method,

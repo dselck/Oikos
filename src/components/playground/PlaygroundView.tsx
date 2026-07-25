@@ -117,7 +117,7 @@ export function PlaygroundView() {
 
       await streamAgentRun({
         instanceId: activeInstance.id,
-        agentId: selectedAgent?.id || "agent",
+        agentId: selectedAgent?.id || "",
         message: userQuery,
         onChunk: (chunkText) => {
           if (!firstTokenTime) {
@@ -233,30 +233,6 @@ export function PlaygroundView() {
               <p className="mt-2 max-w-md text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
                 Send prompts, attach multi-modal documents/images, stream agent runs, and inspect real-time tool execution trees and telemetry.
               </p>
-
-              {/* Sample Quick Prompts */}
-              <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-lg">
-                {[
-                  "Search the web for the latest Agno AgentOS release features",
-                  "Run a Python script to calculate Fibonacci numbers up to 100",
-                  "Explain how Oikos proxies SSE agent streams cleanly",
-                  "List available tools and system memory for this agent",
-                ].map((prompt, i) => (
-                  <button
-                    key={i}
-                    onClick={() => {
-                      setInputMessage(prompt);
-                    }}
-                    className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-3 text-left text-xs text-slate-700 dark:text-slate-300 hover:border-cyan-500/50 hover:bg-slate-50 dark:hover:bg-slate-900 transition-all group"
-                  >
-                    <div className="flex items-center gap-2 text-cyan-600 dark:text-cyan-400 font-mono text-[10px] mb-1">
-                      <Terminal className="h-3 w-3" />
-                      Quick Prompt #{i + 1}
-                    </div>
-                    {prompt}
-                  </button>
-                ))}
-              </div>
             </div>
           ) : (
             messages.map((msg) => (

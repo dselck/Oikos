@@ -62,3 +62,21 @@ export interface ChatMessage {
 
 export type ViewMode = "playground" | "agents" | "control-plane" | "workflows" | "documents" | "sessions";
 
+export const MODEL_PROVIDERS = {
+  OPENAI: "openai",
+  ANTHROPIC: "anthropic",
+  GROQ: "groq",
+  OLLAMA: "ollama",
+} as const;
+
+export const DEFAULT_MODELS = {
+  OPENAI: "gpt-4o",
+  ANTHROPIC: "claude-3-5-sonnet",
+} as const;
+
+export const EXECUTION_MODES = {
+  HIERARCHICAL: "hierarchical",
+  PARALLEL: "parallel",
+  SEQUENTIAL: "sequential",
+} as const;
+

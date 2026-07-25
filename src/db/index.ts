@@ -22,7 +22,7 @@ let isMigrated = false;
 
 /**
  * Robust Database Initializer & Auto-Migrator
- * Safely applies Drizzle SQL migrations whether database is virgin or pre-existing.
+ * Safely applies Drizzle SQL migrations and initializes default instance configuration.
  */
 export function initDatabase() {
   if (isMigrated) return;
@@ -38,7 +38,7 @@ export function initDatabase() {
 
   const now = new Date().toISOString();
 
-  // Seed default Instance if empty
+  // Ensure a default Instance config exists if empty
   try {
     const existingInst = sqlite.prepare("SELECT COUNT(*) as count FROM instances").get() as { count: number };
     if (existingInst.count === 0) {
@@ -57,63 +57,8 @@ export function initDatabase() {
         now
       );
     }
-
-    // Seed starter Agno Agents if empty
-    const existingAgents = sqlite.prepare("SELECT COUNT(*) as count FROM agno_agents").get() as { count: number };
-    if (existingAgents.count === 0) {
-      sqlite.prepare(`
-        INSERT INTO agno_agents (id, name, description, model_provider, model_name, instructions_json, system_prompt, tools_json, is_published, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
-      `).run(
-        "agent",
-        "General Agent",
-        "General-purpose Agno agent with Web Search & Python Code Tools",
-        "openai",
-        "gpt-4o",
-        JSON.stringify(["Be helpful, concise, and accurate."]),
-        "You are a helpful autonomous agent powered by Agno AgentOS.",
-        JSON.stringify(["duckduckgo_search", "python_interpreter"]),
-        now,
-        now
-      );
-
-      sqlite.prepare(`
-        INSERT INTO agno_agents (id, name, description, model_provider, model_name, instructions_json, system_prompt, tools_json, is_published, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
-      `).run(
-        "researcher",
-        "Deep Researcher",
-        "Autonomous researcher agent for multi-step information gathering",
-        "anthropic",
-        "claude-3-5-sonnet",
-        JSON.stringify(["Research thoroughly", "Cite all primary sources"]),
-        "You are an expert research analyst agent.",
-        JSON.stringify(["web_search", "arxiv_reader", "summarizer"]),
-        now,
-        now
-      );
-    }
-
-    // Seed starter Agno Team if empty
-    const existingTeams = sqlite.prepare("SELECT COUNT(*) as count FROM agno_teams").get() as { count: number };
-    if (existingTeams.count === 0) {
-      sqlite.prepare(`
-        INSERT INTO agno_teams (id, name, description, leader_agent_id, member_agent_ids_json, execution_mode, instructions_json, shared_memory, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
-      `).run(
-        "research-synthesis-team",
-        "Research & Synthesis Team",
-        "Multi-agent team coordinating deep research and publishing",
-        "agent",
-        JSON.stringify(["agent", "researcher"]),
-        "hierarchical",
-        JSON.stringify(["Leader delegates research tasks and synthesizes final output"]),
-        now,
-        now
-      );
-    }
   } catch (e) {
-    console.error("Seeding status check:", e);
+    console.error("Default instance seed check:", e);
   }
 
   isMigrated = true;
