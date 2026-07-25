@@ -12,6 +12,7 @@ import { WorkflowStudio } from "@/components/studio/WorkflowStudio";
 import { KnowledgeStudio } from "@/components/studio/KnowledgeStudio";
 import { SessionsMemoryStudio } from "@/components/studio/SessionsMemoryStudio";
 import { AgentTeamStudio } from "@/components/studio/AgentTeamStudio";
+import { Navbar } from "@/components/layout/Navbar";
 
 describe("Theme Light Mode Conformance", () => {
   beforeEach(() => {
@@ -122,5 +123,12 @@ describe("Theme Light Mode Conformance", () => {
     const { container } = render(<AgentTeamStudio />);
     const rootDiv = container.firstChild as HTMLElement;
     expect(rootDiv.className).not.toContain("bg-slate-950");
+  });
+
+  it("renders Navbar with light mode theme support", () => {
+    const { container } = render(<Navbar />);
+    const header = container.firstChild as HTMLElement;
+    expect(header.className).toContain("bg-white/80");
+    expect(header.className).toContain("dark:bg-slate-950/80");
   });
 });

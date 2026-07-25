@@ -17,6 +17,14 @@ export function MainLayout() {
 
   const isDark = theme === "dark";
 
+  React.useEffect(() => {
+    if (isDark) {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, [isDark]);
+
   return (
     <div className={`flex flex-col h-screen font-sans ${isDark ? "dark bg-slate-950 text-slate-100" : "bg-slate-50 text-slate-900"}`}>
       {/* 3-Pane Body Area */}
