@@ -1,70 +1,76 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useAgentOSRegistry } from "@/hooks/useAgentOSRegistry";
+import { sessionMemoryEngine } from "@/lib/session-engine";
+import { Session, SessionDetails } from "@/lib/types";
 import {
   History,
   Trash2,
   Cpu,
   User,
-  Clock,
   Database,
   Brain,
   MessageSquare,
   Search,
-  CheckCircle2,
-  ChevronRight,
-  Sparkles,
+  Loader2,
 } from "lucide-react";
 
-interface SavedSessionRecord {
-  id: string;
-  instanceId: string;
-  agentId: string;
-  title: string;
-  metadataJson: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
-
 export function SessionsMemoryStudio() {
-  const [sessions, setSessions] = useState<SavedSessionRecord[]>([]);
-  const [selectedSession, setSelectedSession] = useState<SavedSessionRecord | null>(null);
+  const { sessions, deleteEntity } = useAgentOSRegistry();
+
+  const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [sessionDetails, setSessionDetails] = useState<SessionDetails | null>(null);
+  const [isLoadingDetails, setIsLoadingDetails] = useState<boolean>(false);
+  const [detailsError, setDetailsError] = useState<string | null>(null);
+
+  const activeSelectedSession = selectedSession || (sessions.length > 0 ? sessions[0] : null);
 
   useEffect(() => {
-    loadSessions();
-  }, []);
-
-  const loadSessions = async () => {
-    try {
-      const res = await fetch("/api/registry/sessions");
-      if (res.ok) {
-        const data: SavedSessionRecord[] = await res.json();
-        setSessions(data);
-        if (data.length > 0 && !selectedSession) {
-          setSelectedSession(data[0]);
-        }
-      }
-    } catch (e) {
-      console.error("Failed to load sessions", e);
+    if (!activeSelectedSession?.id) {
+      setSessionDetails(null);
+      return;
     }
-  };
+
+    let isMounted = true;
+    setIsLoadingDetails(true);
+    setDetailsError(null);
+
+    sessionMemoryEngine
+      .getSessionDetails(activeSelectedSession.id)
+      .then((details) => {
+        if (isMounted) {
+          setSessionDetails(details);
+          setIsLoadingDetails(false);
+        }
+      })
+      .catch((err) => {
+        if (isMounted) {
+          setDetailsError(err instanceof Error ? err.message : String(err));
+          setIsLoadingDetails(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [activeSelectedSession?.id]);
+
 
   const handleDeleteSession = async (id: string) => {
     if (!confirm("Are you sure you want to delete this session and clear its memory history?")) return;
-    const res = await fetch(`/api/registry/sessions?id=${id}`, { method: "DELETE" });
-    if (res.ok) {
-      await loadSessions();
-      if (selectedSession?.id === id) {
-        setSelectedSession(null);
-      }
+    const ok = await deleteEntity("sessions", id);
+    if (ok && activeSelectedSession?.id === id) {
+      setSelectedSession(null);
+      setSessionDetails(null);
     }
   };
 
   const filteredSessions = sessions.filter(
     (s) =>
-      s.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      s.agentId.toLowerCase().includes(searchQuery.toLowerCase())
+      (s.title || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (s.agentId || "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
@@ -111,7 +117,7 @@ export function SessionsMemoryStudio() {
               </div>
             ) : (
               filteredSessions.map((sess) => {
-                const isSelected = selectedSession?.id === sess.id;
+                const isSelected = activeSelectedSession?.id === sess.id;
                 return (
                   <div
                     key={sess.id}
@@ -146,7 +152,7 @@ export function SessionsMemoryStudio() {
 
                     <div className="mt-3 flex items-center justify-between text-[10px] text-slate-400 border-t border-slate-200 dark:border-slate-800/80 pt-2 font-mono">
                       <span>ID: {sess.id}</span>
-                      <span>{new Date(sess.updatedAt).toLocaleDateString()}</span>
+                      <span>{new Date(sess.updatedAt || Date.now()).toLocaleDateString()}</span>
                     </div>
                   </div>
                 );
@@ -156,69 +162,122 @@ export function SessionsMemoryStudio() {
         </div>
 
         {/* Right Column: Session Detail & User Memory Inspector */}
-        <div className="lg:col-span-2 space-y-6">
-          {selectedSession ? (
-            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm space-y-6">
+        <div className="col-span-1 lg:col-span-2">
+          {activeSelectedSession ? (
+            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 space-y-6 shadow-sm">
               <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
                 <div>
-                  <h3 className="font-bold text-sm font-mono flex items-center gap-2">
-                    <Brain className="h-4 w-4 text-cyan-500" />
-                    {selectedSession.title}
-                  </h3>
-                  <p className="text-xs text-slate-500 mt-0.5 font-mono">
-                    Session ID: {selectedSession.id} • Agent: {selectedSession.agentId}
+                  <h2 className="text-base font-bold flex items-center gap-2">
+                    <MessageSquare className="h-5 w-5 text-indigo-500" />
+                    {sessionDetails?.title || activeSelectedSession.title}
+                  </h2>
+                  <p className="text-xs text-slate-500 mt-1 font-mono">
+                    Session ID: {activeSelectedSession.id} • Agent: {sessionDetails?.agentId || activeSelectedSession.agentId}
                   </p>
                 </div>
-
-                <span className="flex items-center gap-1 text-xs text-emerald-500 font-semibold font-mono">
-                  <CheckCircle2 className="h-3.5 w-3.5" /> Persisted
-                </span>
+                <button
+                  onClick={() => handleDeleteSession(activeSelectedSession.id)}
+                  className="px-3 py-1.5 rounded-lg border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 hover:bg-red-100 text-xs font-semibold flex items-center gap-1.5 transition"
+                >
+                  <Trash2 className="h-3.5 w-3.5" /> Clear Session
+                </button>
               </div>
 
-              {/* Memory Context Summary */}
-              <div className="space-y-3">
-                <h4 className="font-bold text-xs uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                  <Brain className="h-3.5 w-3.5 text-cyan-500" /> User Context & Session Memory
-                </h4>
-
-                <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 p-4 font-mono text-xs space-y-2">
-                  <div className="text-cyan-500 font-bold">Agno Session Summary Context:</div>
-                  <p className="text-slate-300 font-sans text-xs leading-relaxed">
-                    User inquired about Agno AgentOS Docker deployment, database hydration, and workflow step execution. Memory retains preferred models (`gpt-4o`, `claude-3-5-sonnet`) and active database settings.
-                  </p>
-                </div>
-              </div>
-
-              {/* Sample Multi-turn Message History Stream */}
-              <div className="space-y-3">
-                <h4 className="font-bold text-xs uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                  <MessageSquare className="h-3.5 w-3.5 text-indigo-500" /> Conversation Transcript History
-                </h4>
-
-                <div className="space-y-3">
-                  <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 p-3 text-xs space-y-1">
-                    <div className="flex items-center justify-between text-[11px] font-mono text-slate-400">
-                      <span className="font-bold text-indigo-500 flex items-center gap-1">
-                        <User className="h-3 w-3" /> User Prompt
-                      </span>
-                      <span>12:30 PM</span>
-                    </div>
-                    <p className="text-slate-300 font-sans">How do I deploy Agno AgentOS with SQLite WAL mode enabled?</p>
+              {/* Session Telemetry Badges */}
+              {sessionDetails?.telemetry && (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 p-3 text-center">
+                    <div className="text-[10px] uppercase font-mono text-slate-500">Total Messages</div>
+                    <div className="text-sm font-bold font-mono text-indigo-500">{sessionDetails.telemetry.totalMessages}</div>
                   </div>
-
-                  <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-900 dark:bg-slate-950 p-3 text-xs space-y-2 border-l-4 border-l-cyan-500">
-                    <div className="flex items-center justify-between text-[11px] font-mono text-slate-400">
-                      <span className="font-bold text-cyan-400 flex items-center gap-1">
-                        <Cpu className="h-3 w-3" /> Agno Agent ({selectedSession.agentId})
-                      </span>
-                      <span>12:30 PM • 350ms</span>
-                    </div>
-                    <p className="text-slate-300 font-sans">
-                      Agno AgentOS initializes SQLite WAL mode via `sqlite.pragma("journal_mode = WAL")`. You can pass `db=SqliteDb(...)` to your Agent to persist history automatically.
-                    </p>
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 p-3 text-center">
+                    <div className="text-[10px] uppercase font-mono text-slate-500">Tool Calls</div>
+                    <div className="text-sm font-bold font-mono text-cyan-500">{sessionDetails.telemetry.totalToolCalls}</div>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 p-3 text-center">
+                    <div className="text-[10px] uppercase font-mono text-slate-500">Prompt Tokens</div>
+                    <div className="text-sm font-bold font-mono text-emerald-500">{sessionDetails.telemetry.estimatedPromptTokens}</div>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 p-3 text-center">
+                    <div className="text-[10px] uppercase font-mono text-slate-500">Completion Tokens</div>
+                    <div className="text-sm font-bold font-mono text-amber-500">{sessionDetails.telemetry.estimatedCompletionTokens}</div>
                   </div>
                 </div>
-              </div>
+              )}
+
+              {isLoadingDetails ? (
+                <div className="flex items-center justify-center p-12 text-slate-400 gap-2 text-xs font-mono">
+                  <Loader2 className="h-5 w-5 animate-spin text-cyan-500" />
+                  Loading session transcript and memory context...
+                </div>
+              ) : detailsError ? (
+                <div className="rounded-xl border border-rose-500/30 bg-rose-950/20 p-4 text-xs text-rose-400 font-mono">
+                  Error loading session details: {detailsError}
+                </div>
+              ) : (
+                <>
+                  {/* Memory Context Summary */}
+                  <div className="space-y-3">
+                    <h4 className="font-bold text-xs uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                      <Brain className="h-3.5 w-3.5 text-cyan-500" /> User Context & Session Memory
+                    </h4>
+
+                    <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 p-4 font-mono text-xs space-y-2">
+                      <div className="text-cyan-500 font-bold">Agno Session Summary Context:</div>
+                      <p className="text-slate-300 font-sans text-xs leading-relaxed">
+                        {sessionDetails?.memorySummary ||
+                          "No stored memory summary context available for this session."}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Multi-turn Message History Stream */}
+                  <div className="space-y-3">
+                    <h4 className="font-bold text-xs uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                      <MessageSquare className="h-3.5 w-3.5 text-indigo-500" /> Conversation Transcript History
+                    </h4>
+
+                    <div className="space-y-3">
+                      {sessionDetails?.messages && sessionDetails.messages.length > 0 ? (
+                        sessionDetails.messages.map((msg) => (
+                          <div
+                            key={msg.id}
+                            className={`rounded-xl border border-slate-200 dark:border-slate-800 p-3 text-xs space-y-1 ${
+                              msg.role === "user"
+                                ? "bg-slate-50 dark:bg-slate-950"
+                                : "bg-slate-900 dark:bg-slate-950 border-l-4 border-l-cyan-500"
+                            }`}
+                          >
+                            <div className="flex items-center justify-between text-[11px] font-mono text-slate-400">
+                              <span
+                                className={`font-bold flex items-center gap-1 ${
+                                  msg.role === "user" ? "text-indigo-500" : "text-cyan-400"
+                                }`}
+                              >
+                                {msg.role === "user" ? (
+                                  <>
+                                    <User className="h-3 w-3" /> User Prompt
+                                  </>
+                                ) : (
+                                  <>
+                                    <Cpu className="h-3 w-3" /> Agent ({sessionDetails.agentId || "Agno"})
+                                  </>
+                                )}
+                              </span>
+                              <span>{new Date(msg.timestamp).toLocaleTimeString()}</span>
+                            </div>
+                            <p className="text-slate-300 font-sans leading-relaxed">{msg.content}</p>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="rounded-xl border border-dashed border-slate-200 dark:border-slate-800 p-6 text-center text-xs text-slate-500">
+                          No conversation transcript messages recorded for this session.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           ) : (
             <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 p-12 text-center text-xs text-slate-500">
@@ -230,3 +289,4 @@ export function SessionsMemoryStudio() {
     </div>
   );
 }
+

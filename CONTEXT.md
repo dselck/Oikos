@@ -28,6 +28,10 @@ _Avoid_: Admin panel, Dashboard
 A stateful conversation thread between a user and an Agent or Workflow maintained in AgentOS.
 _Avoid_: Thread, Chat log
 
+**Session Memory Engine**:
+The deep module class in `src/lib/session-engine.ts` (`SessionMemoryEngine`) that encapsulates session transcript fetching from `AgentOS Client`, user memory context extraction, response payload normalization into standard `ChatMessage` domain models, and instance-scoped session state caching.
+_Avoid_: Session memory hook, History reader, Message list fetcher
+
 **Instance Config**:
 The server-managed settings defining target AgentOS endpoints, API authentication tokens, and default connections for Oikos.
 _Avoid_: Connection string, Server settings
@@ -49,13 +53,37 @@ The capability in Oikos to inspect, create, edit, and hot-reload Agent, Team, an
 _Avoid_: Code editing, Config editor
 
 **Database-Driven Registry**:
-Storing Agent, Team, and Workflow definitions directly in a database (PostgreSQL/SQLite) allowing dynamic hydration of Agno objects at runtime without filesystem writes.
-_Avoid_: Static file config, File-based registry
+Storing Agent, Team, Workflow, and Tool definitions directly in the AgentOS database schema managed via the AgentOS REST API proxied through `/api/proxy/v1/...`, allowing dynamic hydration and versioning of Agno objects at runtime without filesystem writes or server restarts.
+_Avoid_: Static file config, File-based registry, Local registry routes
 
 **Knowledge Base (RAG)**:
 A vector database index and document store attached to an Agent to supply semantic search and retrieval context during runs.
 _Avoid_: Document folder, Vector store
 
+**RAG Document Indexing Engine**:
+The deep module interface in `AgentOS Client` (`knowledgeBases.indexContent`) and `useAgentOSRegistry` (`indexContent`) that encapsulates document and URL ingestion, reader strategy selection (`MarkdownReader`, `WebsiteReader`, `PDFReader`), chunking parameters (`recursive`, `semantic`), vector DB embedding execution, and ingestion telemetry.
+_Avoid_: Document embedder, Chunking hook, File uploader
+
 **Workflow Studio**:
 The interface in Oikos to visually create, edit, step-trace, and manage DB-driven deterministic workflows and agent pipelines.
 _Avoid_: Flow builder, Pipeline editor
+
+**Session Stream Engine**:
+The deep module in Oikos that encapsulates Server-Sent Events (SSE) stream decoding, session lifecycle, tool execution state transitions, run continuations, and trace event buffering across Agents, Teams, and Workflows. Its external seam is the `SessionStreamSink` interface — a set of callbacks (`onMessageAdd`, `onMessageUpdate`, `onStateChange`) through which it reports all state changes to callers. The engine has no dependency on Zustand or React; `useSessionStream` is the sole adapter that bridges the sink and active instance/entity context to the UI store.
+_Avoid_: SSE hook, Stream listener, Chat runner
+
+**AgentOS Client**:
+The deep module interface in Oikos that encapsulates all HTTP REST requests, SSE stream initialization, health checking, and proxy routing to connected AgentOS instances.
+_Avoid_: Fetch helper, Proxy wrapper, API utils
+
+**AgentOS Registry Engine**:
+The deep module in Oikos (`src/hooks/useAgentOSRegistry.ts` / `src/lib/agentos-registry.ts`) that encapsulates centralized reactive entity hydration into `useOikosStore`, entity record normalization (parsing JSON payload strings into strongly-typed domain models), and domain-level mutations (`saveAgent`, `saveTeam`, `saveWorkflow`, `deleteEntity`) with loading states and error handling across runtime AgentOS entities.
+_Avoid_: Entity fetcher, Registry helper, Studio store
+
+**Client Tool Engine**:
+The deep module in Oikos (`src/lib/client-tools`) that encapsulates client-side tool registration, execution timing, security header sanitization, fallback routing (e.g. `generic_http_tool`), and run continuation payload construction for AgentOS sessions.
+_Avoid_: Tool adapter, Client tool wrapper, Function executor
+
+
+
+

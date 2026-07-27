@@ -2,8 +2,8 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { useOikosStore } from "@/lib/store";
-import { ChatMessage, ToolCallExecution } from "@/lib/types";
-import { streamAgentRun } from "@/lib/agentos";
+import { AttachedFile } from "@/lib/session-engine";
+import { useSessionStream } from "@/hooks/useSessionStream";
 import { ToolExecutionTree } from "./ToolExecutionTree";
 import { TraceInspector } from "./TraceInspector";
 import {
@@ -12,21 +12,14 @@ import {
   Activity,
   Cpu,
   Sparkles,
-  Terminal,
   Paperclip,
   Wrench,
   X,
   File,
   Image as ImageIcon,
   Zap,
+  Globe,
 } from "lucide-react";
-
-interface AttachedFile {
-  id: string;
-  name: string;
-  type: string;
-  size: number;
-}
 
 export function PlaygroundView() {
   const {
@@ -35,15 +28,13 @@ export function PlaygroundView() {
     selectedAgent,
     setSelectedAgent,
     messages,
-    addMessage,
-    updateLastMessage,
     openTraceInspector,
   } = useOikosStore();
 
+  const { sendMessage, cancelRun, isStreaming, tokensPerSecond } = useSessionStream();
+
   const [inputMessage, setInputMessage] = useState("");
   const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [tokensPerSecond, setTokensPerSecond] = useState<number | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -79,91 +70,10 @@ export function PlaygroundView() {
     setInputMessage("");
     setAttachedFiles([]);
 
-    // 1. Add User Message
-    const userMsg: ChatMessage = {
-      id: `user-${Date.now()}`,
-      role: "user",
-      content: userQuery + (currentFiles.length > 0 ? `\n\n📎 Attached files: ${currentFiles.map((f) => f.name).join(", ")}` : ""),
-      timestamp: new Date().toISOString(),
-    };
-    addMessage(userMsg);
-
-    // 2. Prepare Assistant Message Placeholder
-    const assistantMsgId = `assistant-${Date.now()}`;
-    const startTime = Date.now();
-    let firstTokenTime: number | null = null;
-    let chunkCount = 0;
-
-    const assistantMsg: ChatMessage = {
-      id: assistantMsgId,
-      role: "assistant",
-      content: "",
-      timestamp: new Date().toISOString(),
-      toolExecutions: [],
-      rawEvents: [],
-      metrics: {
-        timeToFirstTokenMs: 0,
-        totalDurationMs: 0,
-        promptTokens: Math.floor(userQuery.length / 4) + 50,
-        completionTokens: 0,
-      },
-    };
-    addMessage(assistantMsg);
-
-    setIsStreaming(true);
-
-    try {
-      const toolExecMap = new Map<string, ToolCallExecution>();
-
-      await streamAgentRun({
-        instanceId: activeInstance.id,
-        agentId: selectedAgent?.id || "",
-        message: userQuery,
-        onChunk: (chunkText) => {
-          if (!firstTokenTime) {
-            firstTokenTime = Date.now();
-          }
-          chunkCount += 1;
-
-          const elapsedSec = (Date.now() - startTime) / 1000;
-          if (elapsedSec > 0) {
-            setTokensPerSecond(Number((chunkCount / elapsedSec).toFixed(1)));
-          }
-
-          updateLastMessage((prev) => ({
-            ...prev,
-            content: prev.content + chunkText,
-            metrics: {
-              ...prev.metrics,
-              timeToFirstTokenMs: firstTokenTime ? firstTokenTime - startTime : 0,
-              totalDurationMs: Date.now() - startTime,
-              completionTokens: Math.floor((prev.content + chunkText).length / 4),
-            },
-          }));
-        },
-        onToolCall: (toolCall) => {
-          toolExecMap.set(toolCall.id, toolCall);
-          updateLastMessage((prev) => ({
-            ...prev,
-            toolExecutions: Array.from(toolExecMap.values()),
-          }));
-        },
-        onRawEvent: (rawEvt) => {
-          updateLastMessage((prev) => ({
-            ...prev,
-            rawEvents: [...(prev.rawEvents || []), rawEvt],
-          }));
-        },
-      });
-    } catch (err) {
-      updateLastMessage((prev) => ({
-        ...prev,
-        content: prev.content + `\n\n⚠️ **Error connecting to AgentOS**: ${String(err)}`,
-      }));
-    } finally {
-      setIsStreaming(false);
-      setTokensPerSecond(null);
-    }
+    await sendMessage({
+      message: userQuery,
+      attachedFiles: currentFiles,
+    });
   };
 
   return (
@@ -193,8 +103,12 @@ export function PlaygroundView() {
           </div>
         </div>
 
-        {/* Streaming Rate & Tools Badge */}
+        {/* Streaming Rate & Client-Side Tools Badge */}
         <div className="flex items-center gap-3 text-xs">
+          <div className="hidden md:flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[11px] font-mono">
+            <Globe className="h-3 w-3" /> Client mTLS Tools Active
+          </div>
+
           {tokensPerSecond !== null && (
             <span className="flex items-center gap-1 text-[11px] font-mono text-cyan-700 dark:text-cyan-400 bg-cyan-100 dark:bg-cyan-950/60 px-2 py-0.5 rounded border border-cyan-300 dark:border-cyan-800 animate-pulse">
               <Zap className="h-3 w-3" /> {tokensPerSecond} tokens/sec
@@ -231,7 +145,7 @@ export function PlaygroundView() {
                 Agno AgentOS Playground
               </h2>
               <p className="mt-2 max-w-md text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                Send prompts, attach multi-modal documents/images, stream agent runs, and inspect real-time tool execution trees and telemetry.
+                Send prompts, stream agent runs, and execute corporate mTLS client tools (Jira, Confluence, GitLab) directly in your browser.
               </p>
             </div>
           ) : (

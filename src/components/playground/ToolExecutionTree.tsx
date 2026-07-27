@@ -2,7 +2,8 @@
 
 import React, { useState } from "react";
 import { ToolCallExecution } from "@/lib/types";
-import { Wrench, ChevronDown, ChevronRight, CheckCircle2, Clock, Terminal } from "lucide-react";
+import { registry } from "@/lib/client-tools";
+import { Wrench, ChevronDown, ChevronRight, CheckCircle2, Clock, Terminal, Globe } from "lucide-react";
 
 interface Props {
   executions: ToolCallExecution[];
@@ -27,6 +28,8 @@ export function ToolExecutionTree({ executions }: Props) {
       <div className="mt-2 space-y-2">
         {executions.map((exec) => {
           const isExpanded = expandedId === exec.id;
+          const isClientTool = registry.hasTool(exec.toolName);
+
           return (
             <div
               key={exec.id}
@@ -46,6 +49,11 @@ export function ToolExecutionTree({ executions }: Props) {
                     <Terminal className="h-3 w-3 text-cyan-600 dark:text-cyan-400" />
                     {exec.toolName}
                   </span>
+                  {isClientTool && (
+                    <span className="flex items-center gap-1 rounded bg-purple-500/10 px-1.5 py-0.5 text-[9px] font-semibold text-purple-600 dark:text-purple-400 border border-purple-500/20 font-mono">
+                      <Globe className="h-2.5 w-2.5" /> Client mTLS
+                    </span>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-2">

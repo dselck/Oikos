@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useOikosStore } from "@/lib/store";
-import { Agent } from "@/lib/types";
-import { AgentCardGrid, AgnoAgentRecord } from "./AgentCardGrid";
+import { Agent, Team } from "@/lib/types";
+import { AgentCardGrid } from "./AgentCardGrid";
 import { TeamBuilderForm } from "./TeamBuilderForm";
+import { useAgentOSRegistry } from "@/hooks/useAgentOSRegistry";
 import {
   Plus,
   Trash2,
@@ -19,25 +20,11 @@ import {
   Search,
 } from "lucide-react";
 
-interface AgnoTeamRecord {
-  id: string;
-  name: string;
-  description: string | null;
-  leaderAgentId: string;
-  memberAgentIdsJson: string;
-  executionMode: string;
-  instructionsJson: string | null;
-  sharedMemory: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
 export function AgentTeamStudio() {
   const { setViewMode, setSelectedAgent } = useOikosStore();
+  const { agents: agentsList, teams: teamsList, saveAgent, saveTeam, deleteEntity } = useAgentOSRegistry();
 
   const [activeSubTab, setActiveSubTab] = useState<"agents" | "teams">("agents");
-  const [agentsList, setAgentsList] = useState<AgnoAgentRecord[]>([]);
-  const [teamsList, setTeamsList] = useState<AgnoTeamRecord[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
 
   // Agent Form State
@@ -54,27 +41,6 @@ export function AgentTeamStudio() {
   // Team Form State
   const [isEditingTeam, setIsEditingTeam] = useState(false);
 
-  useEffect(() => {
-    loadRegistry();
-  }, []);
-
-  const loadRegistry = async () => {
-    try {
-      const [agentsRes, teamsRes] = await Promise.all([
-        fetch("/api/registry/agents"),
-        fetch("/api/registry/teams"),
-      ]);
-      if (agentsRes.ok) {
-        setAgentsList(await agentsRes.json());
-      }
-      if (teamsRes.ok) {
-        setTeamsList(await teamsRes.json());
-      }
-    } catch (e) {
-      console.error("Failed to load registry", e);
-    }
-  };
-
   const handleOpenNewAgent = () => {
     setEditingAgentId(null);
     setAgentName("");
@@ -87,25 +53,15 @@ export function AgentTeamStudio() {
     setIsEditingAgent(true);
   };
 
-  const handleOpenEditAgent = (ag: AgnoAgentRecord) => {
+  const handleOpenEditAgent = (ag: Agent) => {
     setEditingAgentId(ag.id);
     setAgentName(ag.name);
     setAgentDescription(ag.description || "");
     setModelProvider(ag.modelProvider || "openai");
-    setModelName(ag.modelName || "gpt-4o");
+    setModelName(ag.modelName || ag.model || "gpt-4o");
     setSystemPrompt(ag.systemPrompt || "");
-    try {
-      const instArr = JSON.parse(ag.instructionsJson || "[]");
-      setInstructionsText(Array.isArray(instArr) ? instArr.join("\n") : "");
-    } catch {
-      setInstructionsText(ag.instructionsJson || "");
-    }
-    try {
-      const toolsArr = JSON.parse(ag.toolsJson || "[]");
-      setSelectedTools(Array.isArray(toolsArr) ? toolsArr : []);
-    } catch {
-      setSelectedTools([]);
-    }
+    setInstructionsText(Array.isArray(ag.instructions) ? ag.instructions.join("\n") : "");
+    setSelectedTools(Array.isArray(ag.tools) ? ag.tools : []);
     setIsEditingAgent(true);
   };
 
@@ -118,47 +74,30 @@ export function AgentTeamStudio() {
       .map((s) => s.trim())
       .filter(Boolean);
 
-    const payload = {
-      id: editingAgentId || `agent-${Date.now()}`,
-      name: agentName,
-      description: agentDescription,
-      modelProvider,
-      modelName,
-      systemPrompt,
-      instructions,
-      tools: selectedTools,
-    };
-
-    const method = editingAgentId ? "PUT" : "POST";
-    const res = await fetch("/api/registry/agents", {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    if (res.ok) {
+    try {
+      await saveAgent({
+        id: editingAgentId || undefined,
+        name: agentName,
+        description: agentDescription,
+        modelProvider,
+        modelName,
+        systemPrompt,
+        instructions,
+        tools: selectedTools,
+      });
       setIsEditingAgent(false);
-      await loadRegistry();
+    } catch (err) {
+      console.error("Failed to save agent", err);
     }
   };
 
   const handleDeleteAgent = async (id: string) => {
     if (!confirm("Are you sure you want to remove this agent from the DB registry?")) return;
-    const res = await fetch(`/api/registry/agents?id=${id}`, { method: "DELETE" });
-    if (res.ok) {
-      await loadRegistry();
-    }
+    await deleteEntity("agents", id);
   };
 
-  const handleTestInPlayground = (ag: AgnoAgentRecord) => {
-    const formatted: Agent = {
-      id: ag.id,
-      name: ag.name,
-      description: ag.description || "",
-      model: `${ag.modelProvider}:${ag.modelName}`,
-      tools: JSON.parse(ag.toolsJson || "[]"),
-    };
-    setSelectedAgent(formatted);
+  const handleTestInPlayground = (ag: Agent) => {
+    setSelectedAgent(ag);
     setViewMode("playground");
   };
 
@@ -169,16 +108,8 @@ export function AgentTeamStudio() {
     memberAgentIds: string[];
     executionMode: string;
   }) => {
-    const res = await fetch("/api/registry/teams", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(teamData),
-    });
-
-    if (res.ok) {
-      setIsEditingTeam(false);
-      await loadRegistry();
-    }
+    await saveTeam(teamData);
+    setIsEditingTeam(false);
   };
 
   const availableToolsList = [
@@ -434,7 +365,7 @@ export function AgentTeamStudio() {
       {activeSubTab === "teams" && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {teamsList.map((tm) => {
-            const members: string[] = JSON.parse(tm.memberAgentIdsJson || "[]");
+            const members: string[] = tm.memberAgentIds || [];
             return (
               <div
                 key={tm.id}

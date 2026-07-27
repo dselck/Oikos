@@ -1,6 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
+import { useAgentOSRegistry } from "@/hooks/useAgentOSRegistry";
+import { IngestionResponse } from "@/lib/types";
 import {
   FileText,
   Plus,
@@ -10,59 +12,57 @@ import {
   Globe,
   Search,
   CheckCircle2,
-  Layers,
   Sparkles,
-  FileCode,
   HardDrive,
+  Loader2,
+  Sliders,
 } from "lucide-react";
 
 interface KnowledgeBaseRecord {
   id: string;
   name: string;
-  description: string | null;
-  vectorDbType: string;
-  tableOrCollection: string;
-  embedderModel: string;
-  documentCount: number;
-  createdAt: string;
-  updatedAt: string;
+  description?: string | null;
+  vectorDbType?: string;
+  tableOrCollection?: string;
+  embedderModel?: string;
+  documentCount?: number;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export function KnowledgeStudio() {
-  const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBaseRecord[]>([]);
+  const { knowledgeBases: knowledgeBasesRaw, deleteEntity, mutateEntity, indexContent } = useAgentOSRegistry();
+  const knowledgeBases = knowledgeBasesRaw as unknown as KnowledgeBaseRecord[];
+
   const [searchQuery, setSearchQuery] = useState("");
   const [isCreating, setIsCreating] = useState(false);
 
-  // Form State
+  // Form State for creating KB
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [vectorDbType, setVectorDbType] = useState("sqlite_vec");
   const [tableOrCollection, setTableOrCollection] = useState("documents_vec");
   const [embedderModel, setEmbedderModel] = useState("text-embedding-3-small");
 
-  // Document Upload Mock State
+  // Selection State
+  const [selectedKbId, setSelectedKbId] = useState<string | null>(null);
+  const activeSelectedKbId = selectedKbId || (knowledgeBases.length > 0 ? knowledgeBases[0].id : null);
+
+  // Agno AgentOS Indexing Strategy State
+  const [sourceType, setSourceType] = useState<"text" | "markdown" | "url">("markdown");
   const [docTitle, setDocTitle] = useState("");
   const [docContent, setDocContent] = useState("");
-  const [selectedKbId, setSelectedKbId] = useState<string | null>(null);
+  const [docUrl, setDocUrl] = useState("");
+  const [readerType, setReaderType] = useState<"text_reader" | "pdf_reader" | "website_reader" | "markdown_reader">("markdown_reader");
+  const [chunkingStrategy, setChunkingStrategy] = useState<"recursive" | "semantic" | "fixed_size">("recursive");
+  const [chunkSize, setChunkSize] = useState<number>(500);
+  const [chunkOverlap, setChunkOverlap] = useState<number>(50);
+  const [recreateVectorDb, setRecreateVectorDb] = useState<boolean>(false);
 
-  useEffect(() => {
-    loadKnowledgeBases();
-  }, []);
-
-  const loadKnowledgeBases = async () => {
-    try {
-      const res = await fetch("/api/registry/knowledge");
-      if (res.ok) {
-        const data = await res.json();
-        setKnowledgeBases(data);
-        if (data.length > 0 && !selectedKbId) {
-          setSelectedKbId(data[0].id);
-        }
-      }
-    } catch (e) {
-      console.error("Failed to load knowledge bases", e);
-    }
-  };
+  // Ingestion Execution State
+  const [isIngesting, setIsIngesting] = useState(false);
+  const [ingestionResult, setIngestionResult] = useState<IngestionResponse | null>(null);
+  const [ingestionError, setIngestionError] = useState<string | null>(null);
 
   const handleCreateKnowledgeBase = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,25 +76,53 @@ export function KnowledgeStudio() {
       embedderModel,
     };
 
-    const res = await fetch("/api/registry/knowledge", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    if (res.ok) {
-      setIsCreating(false);
-      setName("");
-      setDescription("");
-      await loadKnowledgeBases();
-    }
+    await mutateEntity({ resource: "knowledgeBases", action: "create", payload });
+    setIsCreating(false);
+    setName("");
+    setDescription("");
   };
 
   const handleDeleteKnowledgeBase = async (id: string) => {
     if (!confirm("Are you sure you want to delete this RAG Knowledge Base index?")) return;
-    const res = await fetch(`/api/registry/knowledge?id=${id}`, { method: "DELETE" });
-    if (res.ok) {
-      await loadKnowledgeBases();
+    await deleteEntity("knowledgeBases", id);
+    if (activeSelectedKbId === id) {
+      setSelectedKbId(null);
+    }
+  };
+
+  const handleIndexContent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeSelectedKbId || !docTitle.trim()) return;
+
+    if (sourceType === "url" && !docUrl.trim()) return;
+    if (sourceType !== "url" && !docContent.trim()) return;
+
+    setIsIngesting(true);
+    setIngestionResult(null);
+    setIngestionError(null);
+
+    try {
+      const res = await indexContent({
+        kbId: activeSelectedKbId,
+        sourceType,
+        title: docTitle,
+        content: sourceType !== "url" ? docContent : undefined,
+        url: sourceType === "url" ? docUrl : undefined,
+        readerType: readerType || undefined,
+        chunkingStrategy,
+        chunkSize,
+        chunkOverlap,
+        recreateVectorDb,
+      });
+
+      setIngestionResult(res);
+      setDocTitle("");
+      setDocContent("");
+      setDocUrl("");
+    } catch (err) {
+      setIngestionError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setIsIngesting(false);
     }
   };
 
@@ -115,7 +143,7 @@ export function KnowledgeStudio() {
           <div>
             <h1 className="text-lg font-bold font-mono tracking-tight">Knowledge & RAG Documents Hub</h1>
             <p className="text-xs text-slate-500 mt-0.5">
-              Manage Vector DB indices (`PgVector`, `sqlite_vec`, `Qdrant`), upload documents, and attach RAG context to Agents.
+              Manage Vector DB indices (`PgVector`, `sqlite_vec`, `Qdrant`), configure Agno AgentOS reader strategies, and index RAG context.
             </p>
           </div>
         </div>
@@ -249,8 +277,8 @@ export function KnowledgeStudio() {
                   key={kb.id}
                   onClick={() => setSelectedKbId(kb.id)}
                   className={`rounded-xl border p-4 cursor-pointer transition ${
-                    selectedKbId === kb.id
-                      ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 shadow-sm"
+                    activeSelectedKbId === kb.id
+                      ? "border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20"
                       : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-700"
                   }`}
                 >
@@ -284,66 +312,208 @@ export function KnowledgeStudio() {
           </div>
         </div>
 
-        {/* Right Column: RAG Document Upload & Chunking Panel */}
+        {/* Right Column: Agno AgentOS Strategy Indexing Panel */}
         <div className="lg:col-span-2 space-y-6">
-          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm space-y-6">
+          <form
+            onSubmit={handleIndexContent}
+            className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm space-y-6"
+          >
             <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
               <h3 className="font-bold text-sm font-mono flex items-center gap-2">
                 <UploadCloud className="h-4 w-4 text-emerald-500" />
-                Index Documents into Vector Database
+                Agno AgentOS Document & Strategy Indexing
               </h3>
               <span className="text-[11px] font-mono text-emerald-500 flex items-center gap-1">
-                <CheckCircle2 className="h-3 w-3" /> Embedder: text-embedding-3-small
+                <CheckCircle2 className="h-3 w-3" /> Delegated to AgentOS
               </span>
             </div>
 
+            {/* Ingestion Source Tabs */}
+            <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3 text-xs font-semibold">
+              <button
+                type="button"
+                onClick={() => {
+                  setSourceType("markdown");
+                  setReaderType("markdown_reader");
+                }}
+                className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition ${
+                  sourceType === "markdown" || sourceType === "text"
+                    ? "bg-emerald-600 text-white shadow-sm"
+                    : "bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-slate-200"
+                }`}
+              >
+                <FileText className="h-3.5 w-3.5" /> Text / Markdown
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSourceType("url");
+                  setReaderType("website_reader");
+                }}
+                className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition ${
+                  sourceType === "url"
+                    ? "bg-emerald-600 text-white shadow-sm"
+                    : "bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-slate-200"
+                }`}
+              >
+                <Globe className="h-3.5 w-3.5" /> Website / URL Loader
+              </button>
+            </div>
+
+            {/* Form Fields */}
             <div className="space-y-4 text-xs">
               <div>
-                <label className="block font-semibold mb-1">Document Title / File Name</label>
+                <label className="block font-semibold mb-1">Document Title / Reference Name</label>
                 <input
                   type="text"
                   placeholder="e.g. Agno_AgentOS_Architecture_Guide.md"
                   value={docTitle}
                   onChange={(e) => setDocTitle(e.target.value)}
+                  required
                   className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 outline-none font-mono"
                 />
               </div>
 
-              <div>
-                <label className="block font-semibold mb-1">Document Text / Markdown Content</label>
-                <textarea
-                  rows={6}
-                  placeholder="Paste Markdown, text, or documentation here for vector embedding chunking..."
-                  value={docContent}
-                  onChange={(e) => setDocContent(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 p-3 font-mono outline-none focus:border-emerald-500"
-                />
-              </div>
+              {sourceType === "url" ? (
+                <div>
+                  <label className="block font-semibold mb-1">Target Web URL to Ingest</label>
+                  <input
+                    type="url"
+                    placeholder="https://docs.agno.com/concepts/agents"
+                    value={docUrl}
+                    onChange={(e) => setDocUrl(e.target.value)}
+                    required
+                    className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 outline-none font-mono text-emerald-400"
+                  />
+                </div>
+              ) : (
+                <div>
+                  <label className="block font-semibold mb-1">Text / Markdown Content</label>
+                  <textarea
+                    rows={5}
+                    placeholder="Paste Markdown or document text for Agno reader processing..."
+                    value={docContent}
+                    onChange={(e) => setDocContent(e.target.value)}
+                    required
+                    className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 p-3 font-mono outline-none focus:border-emerald-500"
+                  />
+                </div>
+              )}
 
-              <div className="flex items-center justify-between pt-2">
-                <div className="flex items-center gap-4 text-[11px] text-slate-400 font-mono">
-                  <span>Chunk Size: 500 tokens</span>
-                  <span>Overlap: 50 tokens</span>
+              {/* Agno Strategy Selectors */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-200 dark:border-slate-800">
+                <div>
+                  <label className="block font-semibold mb-1 flex items-center gap-1.5 text-slate-300">
+                    <Sliders className="h-3.5 w-3.5 text-emerald-500" /> Agno Reader Backend
+                  </label>
+                  <select
+                    value={readerType}
+                    onChange={(e) =>
+                      setReaderType(
+                        e.target.value as "text_reader" | "pdf_reader" | "website_reader" | "markdown_reader"
+                      )
+                    }
+                    className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-1.5 outline-none font-mono"
+                  >
+                    <option value="markdown_reader">MarkdownReader (Agno Native)</option>
+                    <option value="text_reader">TextReader</option>
+                    <option value="website_reader">WebsiteReader (HTML Scraping)</option>
+                    <option value="pdf_reader">PDFReader (PyPDF)</option>
+                  </select>
                 </div>
 
+                <div>
+                  <label className="block font-semibold mb-1 flex items-center gap-1.5 text-slate-300">
+                    <Sliders className="h-3.5 w-3.5 text-emerald-500" /> Chunking Strategy
+                  </label>
+                  <select
+                    value={chunkingStrategy}
+                    onChange={(e) => setChunkingStrategy(e.target.value as "recursive" | "semantic" | "fixed_size")}
+                    className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-1.5 outline-none font-mono"
+                  >
+                    <option value="recursive">Recursive Character Chunking</option>
+                    <option value="semantic">Semantic Sentence Chunking</option>
+                    <option value="fixed_size">Fixed Size Tokens</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-semibold mb-1 text-slate-400">Chunk Size (Tokens)</label>
+                  <input
+                    type="number"
+                    value={chunkSize}
+                    onChange={(e) => setChunkSize(Number(e.target.value))}
+                    min={50}
+                    max={4000}
+                    className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-1.5 outline-none font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-semibold mb-1 text-slate-400">Chunk Overlap (Tokens)</label>
+                  <input
+                    type="number"
+                    value={chunkOverlap}
+                    onChange={(e) => setChunkOverlap(Number(e.target.value))}
+                    min={0}
+                    max={500}
+                    className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-1.5 outline-none font-mono"
+                  />
+                </div>
+
+                <div className="sm:col-span-2 flex items-center gap-2 pt-1 font-mono text-[11px]">
+                  <input
+                    type="checkbox"
+                    id="recreateIndex"
+                    checked={recreateVectorDb}
+                    onChange={(e) => setRecreateVectorDb(e.target.checked)}
+                    className="rounded border-slate-700 bg-slate-900 text-emerald-500 focus:ring-0"
+                  />
+                  <label htmlFor="recreateIndex" className="text-slate-300 cursor-pointer">
+                    Recreate Vector DB Collection (Clear existing embeddings before indexing)
+                  </label>
+                </div>
+              </div>
+
+              {/* Dynamic Ingestion Status Feedback */}
+              {isIngesting ? (
+                <div className="flex items-center justify-center gap-2 p-4 rounded-xl bg-emerald-950/20 border border-emerald-500/30 text-emerald-400 font-mono text-xs">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Executing Agno AgentOS Ingestion Strategy...
+                </div>
+              ) : ingestionError ? (
+                <div className="p-4 rounded-xl bg-rose-950/20 border border-rose-500/30 text-rose-400 font-mono text-xs">
+                  Ingestion Error: {ingestionError}
+                </div>
+              ) : ingestionResult ? (
+                <div className="p-4 rounded-xl bg-emerald-950/20 border border-emerald-500/30 text-emerald-300 font-mono text-xs space-y-1">
+                  <div className="font-bold text-emerald-400 flex items-center gap-1.5">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                    {ingestionResult.message}
+                  </div>
+                  <div className="text-[11px] text-slate-400 flex items-center gap-4 pt-1">
+                    <span>Documents Indexed: {ingestionResult.documentsIndexed}</span>
+                    <span>Chunks Generated: {ingestionResult.chunksGenerated}</span>
+                  </div>
+                </div>
+              ) : null}
+
+              {/* Submit Button */}
+              <div className="flex justify-end pt-2">
                 <button
-                  type="button"
-                  onClick={() => {
-                    if (!docTitle.trim() || !docContent.trim()) return;
-                    alert(`Successfully indexed "${docTitle}" into vector collection! (5 chunks generated)`);
-                    setDocTitle("");
-                    setDocContent("");
-                  }}
-                  className="flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-2 text-xs font-semibold text-white shadow-sm hover:bg-emerald-500 transition"
+                  type="submit"
+                  disabled={isIngesting || !activeSelectedKbId}
+                  className="flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-2 text-xs font-semibold text-white shadow-sm hover:bg-emerald-500 disabled:opacity-50 transition"
                 >
                   <Sparkles className="h-3.5 w-3.5" />
-                  Index Document & Embed
+                  Index Content via Agno AgentOS
                 </button>
               </div>
             </div>
-          </div>
+          </form>
         </div>
       </div>
     </div>
   );
 }
+

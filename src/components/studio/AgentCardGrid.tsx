@@ -4,26 +4,11 @@ import React from "react";
 import { Agent } from "@/lib/types";
 import { Cpu, Edit3, Trash2, Wrench, CheckCircle2, Play } from "lucide-react";
 
-export interface AgnoAgentRecord {
-  id: string;
-  name: string;
-  description: string | null;
-  modelProvider: string;
-  modelName: string;
-  instructionsJson: string | null;
-  systemPrompt: string | null;
-  toolsJson: string | null;
-  knowledgeBaseId: string | null;
-  isPublished: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
 interface Props {
-  agentsList: AgnoAgentRecord[];
-  onEditAgent: (ag: AgnoAgentRecord) => void;
+  agentsList: Agent[];
+  onEditAgent: (ag: Agent) => void;
   onDeleteAgent: (id: string) => void;
-  onTestInPlayground: (ag: AgnoAgentRecord) => void;
+  onTestInPlayground: (ag: Agent) => void;
 }
 
 export function AgentCardGrid({
@@ -35,12 +20,7 @@ export function AgentCardGrid({
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {agentsList.map((ag) => {
-        let tools: string[] = [];
-        try {
-          tools = JSON.parse(ag.toolsJson || "[]");
-        } catch {
-          tools = [];
-        }
+        const tools = ag.tools || [];
 
         return (
           <div
@@ -52,7 +32,7 @@ export function AgentCardGrid({
                 <div className="flex items-center gap-2">
                   <h3 className="font-bold text-sm">{ag.name}</h3>
                   <span className="rounded bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 text-[10px] font-mono font-semibold text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800">
-                    {ag.modelProvider}:{ag.modelName}
+                    {ag.modelProvider || "openai"}:{ag.modelName || ag.model || "gpt-4o"}
                   </span>
                 </div>
                 <p className="text-xs text-slate-500 mt-1 line-clamp-2">

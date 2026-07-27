@@ -1,41 +1,43 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
+import { useAgentOSRegistry } from "@/hooks/useAgentOSRegistry";
 import {
-  Layers,
+  Workflow,
   Plus,
   Trash2,
+  GitBranch,
   Play,
-  ArrowRight,
-  Cpu,
-  Wrench,
+  Layers,
+  Sparkles,
+  Search,
   CheckCircle2,
-  Clock,
+  ArrowRight,
   Sliders,
   Code,
-  Search,
+  Cpu,
+  Wrench,
 } from "lucide-react";
 
-interface WorkflowStep {
+export interface WorkflowStep {
   id: string;
-  type: "agent" | "tool";
+  type: "agent" | "tool" | "condition";
   name: string;
-  targetId: string; // agent_id or tool_id
+  targetId: string;
   promptTemplate?: string;
 }
 
-interface AgnoWorkflowRecord {
+export interface WorkflowStep {
   id: string;
+  type: "agent" | "tool" | "condition";
   name: string;
-  description: string | null;
-  stepsJson: string;
-  sessionStateJson: string | null;
-  createdAt: string;
-  updatedAt: string;
+  targetId: string;
+  promptTemplate?: string;
 }
 
 export function WorkflowStudio() {
-  const [workflows, setWorkflows] = useState<AgnoWorkflowRecord[]>([]);
+  const { workflows, saveWorkflow, deleteEntity } = useAgentOSRegistry();
+
   const [searchQuery, setSearchQuery] = useState("");
   const [isEditing, setIsEditing] = useState(false);
 
@@ -45,21 +47,6 @@ export function WorkflowStudio() {
   const [workflowDescription, setWorkflowDescription] = useState("");
   const [steps, setSteps] = useState<WorkflowStep[]>([]);
   const [sessionStateText, setSessionStateText] = useState("{}");
-
-  useEffect(() => {
-    loadWorkflows();
-  }, []);
-
-  const loadWorkflows = async () => {
-    try {
-      const res = await fetch("/api/registry/workflows");
-      if (res.ok) {
-        setWorkflows(await res.json());
-      }
-    } catch (e) {
-      console.error("Failed to load workflows", e);
-    }
-  };
 
   const handleOpenNewWorkflow = () => {
     setEditingId(null);
@@ -101,32 +88,19 @@ export function WorkflowStudio() {
       return;
     }
 
-    const payload = {
-      id: editingId || `wf-${Date.now()}`,
+    await saveWorkflow({
+      id: editingId || undefined,
       name: workflowName,
       description: workflowDescription,
-      steps,
+      steps: steps as unknown as Array<Record<string, unknown>>,
       sessionState,
-    };
-
-    const res = await fetch("/api/registry/workflows", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
     });
-
-    if (res.ok) {
-      setIsEditing(false);
-      await loadWorkflows();
-    }
+    setIsEditing(false);
   };
 
   const handleDeleteWorkflow = async (id: string) => {
     if (!confirm("Delete this DB-driven workflow from registry?")) return;
-    const res = await fetch(`/api/registry/workflows?id=${id}`, { method: "DELETE" });
-    if (res.ok) {
-      await loadWorkflows();
-    }
+    await deleteEntity("workflows", id);
   };
 
   const filteredWorkflows = workflows.filter(
@@ -333,12 +307,7 @@ export function WorkflowStudio() {
       {/* WORKFLOWS GRID */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {filteredWorkflows.map((wf) => {
-          let stepList: WorkflowStep[] = [];
-          try {
-            stepList = JSON.parse(wf.stepsJson || "[]");
-          } catch {
-            stepList = [];
-          }
+          const stepList: WorkflowStep[] = (wf.steps || []) as unknown as WorkflowStep[];
 
           return (
             <div

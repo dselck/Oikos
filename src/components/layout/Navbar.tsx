@@ -3,7 +3,7 @@
 import React, { useEffect } from "react";
 import { useOikosStore } from "@/lib/store";
 import { InstanceConfig } from "@/lib/types";
-import { checkInstanceHealth, fetchAgents } from "@/lib/agentos";
+import { createAgentOSClient } from "@/lib/agentos-client";
 import {
   Cpu,
   Activity,
@@ -50,11 +50,12 @@ export function Navbar() {
   };
 
   const verifyAndLoadAgents = async (inst: InstanceConfig) => {
-    const health = await checkInstanceHealth(inst);
+    const client = createAgentOSClient(inst.id);
+    const health = await client.health.check();
     const updated = { ...inst, status: health };
     setActiveInstance(updated);
 
-    const agentList = await fetchAgents(inst.id);
+    const agentList = await client.agents.list();
     setAgents(agentList);
     if (agentList.length > 0) {
       setSelectedAgent(agentList[0]);

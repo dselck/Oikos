@@ -2,10 +2,10 @@
 
 import React, { useState } from "react";
 import { Users } from "lucide-react";
-import { AgnoAgentRecord } from "./AgentCardGrid";
+import { Agent } from "@/lib/types";
 
 interface Props {
-  agentsList: AgnoAgentRecord[];
+  agentsList: Agent[];
   onSaveTeam: (teamData: {
     name: string;
     description: string;
@@ -69,7 +69,7 @@ export function TeamBuilderForm({ agentsList, onSaveTeam, onCancel }: Props) {
           >
             {agentsList.map((a) => (
               <option key={a.id} value={a.id}>
-                {a.name} ({a.modelName})
+                {a.name} ({a.modelName || a.model || "gpt-4o"})
               </option>
             ))}
           </select>

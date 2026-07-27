@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { useOikosStore } from "@/lib/store";
 import { InstanceConfig } from "@/lib/types";
-import { checkInstanceHealth } from "@/lib/agentos";
+import { createAgentOSClient } from "@/lib/agentos-client";
 import {
   Server,
   Plus,
@@ -86,7 +86,8 @@ export function ControlPlaneView() {
   };
 
   const handleTestHealth = async (inst: InstanceConfig) => {
-    const health = await checkInstanceHealth(inst);
+    const client = createAgentOSClient(inst.id);
+    const health = await client.health.check();
     const updated = instances.map((i) => (i.id === inst.id ? { ...i, status: health } : i));
     setInstances(updated);
     if (activeInstance?.id === inst.id) {

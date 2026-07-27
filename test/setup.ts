@@ -4,11 +4,18 @@ import { vi } from "vitest";
 if (typeof window !== "undefined") {
   Element.prototype.scrollIntoView = vi.fn();
 
-  // Mock global fetch for relative API calls in test env
-  global.fetch = vi.fn().mockImplementation(() =>
-    Promise.resolve({
+  const originalFetch = globalThis.fetch;
+
+  // Mock global fetch for relative API calls in test env while preserving native fetch for http(s)
+  global.fetch = vi.fn().mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+    const urlStr = input.toString();
+    if (urlStr.startsWith("http://") || urlStr.startsWith("https://")) {
+      return originalFetch(input, init);
+    }
+    return Promise.resolve({
       ok: true,
       json: () => Promise.resolve([]),
-    })
-  ) as unknown as typeof fetch;
+      text: () => Promise.resolve("[]"),
+    });
+  }) as unknown as typeof fetch;
 }
