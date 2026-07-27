@@ -84,6 +84,14 @@ _Avoid_: Entity fetcher, Registry helper, Studio store
 The deep module in Oikos (`src/lib/client-tools`) that encapsulates client-side tool registration, execution timing, security header sanitization, fallback routing (e.g. `generic_http_tool`), and run continuation payload construction for AgentOS sessions.
 _Avoid_: Tool adapter, Client tool wrapper, Function executor
 
+**Oikos Auth Engine**:
+The deep module in Oikos that encapsulates local authentication (username/password credentials & OAuth/OIDC providers), session cookie management, and user identity persistence in the Oikos database schema (`src/db/schema.ts`).
+_Avoid_: Login helper, Auth hook, User store
 
+**Proxy Identity Seam**:
+The server-side security boundary in `src/app/api/proxy/[...path]/route.ts` that validates incoming authenticated Oikos user sessions, enforces role-based endpoint permissions, and injects/overrides the verified `user_id` into outbound request JSON bodies and query parameters sent to AgentOS.
+_Avoid_: Proxy filter, Header wrapper, Request interceptor
 
-
+**Oikos User Role**:
+The authorization scope assigned to an Oikos user account — strictly partitioned into `Admin` (full system configuration, instance management, registry authoring, user administration, and global session access) and `Member` (scoped to Playground interaction, self-owned session filtering, and self-owned memory management).
+_Avoid_: Access level, Permission flag, User type
