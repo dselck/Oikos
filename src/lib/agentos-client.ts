@@ -48,7 +48,7 @@ export interface IAgentOSClient {
     indexContent(params: IndexContentParams): Promise<IngestionResponse>;
   };
   sessions: {
-    list(): Promise<Session[]>;
+    list(userId?: string): Promise<Session[]>;
     get(id: string): Promise<SessionDetails>;
     delete(id: string): Promise<boolean>;
   };
@@ -432,8 +432,9 @@ export class HttpAgentOSClient implements IAgentOSClient {
   };
 
   public sessions = {
-    list: async (): Promise<Session[]> => {
-      const res = await this.request("/sessions");
+    list: async (userId?: string): Promise<Session[]> => {
+      const query = userId ? `?user_id=${encodeURIComponent(userId)}` : "";
+      const res = await this.request(`/sessions${query}`);
       if (!res.ok) return [];
       const data = await res.json();
       if (!Array.isArray(data)) return [];
@@ -474,7 +475,7 @@ export class HttpAgentOSClient implements IAgentOSClient {
 
   public runs = {
     stream: async (options: StreamRunOptions): Promise<Response> => {
-      const { entityType = "agent", entityId, message, sessionId } = options;
+      const { entityType = "agent", entityId, message, sessionId, userId } = options;
       const endpoint = `/${entityType}s/${encodeURIComponent(entityId)}/runs`;
 
       let res = await this.request(endpoint, {
@@ -483,6 +484,7 @@ export class HttpAgentOSClient implements IAgentOSClient {
         body: JSON.stringify({
           message,
           session_id: sessionId || undefined,
+          user_id: userId || undefined,
           stream: true,
         }),
       });
@@ -495,6 +497,7 @@ export class HttpAgentOSClient implements IAgentOSClient {
             agent_id: entityId,
             message,
             session_id: sessionId || undefined,
+            user_id: userId || undefined,
             stream: true,
           }),
         });
@@ -627,7 +630,7 @@ export class MockAgentOSClient implements IAgentOSClient {
   };
 
   public sessions = {
-    list: async (): Promise<Session[]> => [...this.sessionsList],
+    list: async (_userId?: string): Promise<Session[]> => [...this.sessionsList],
     get: async (id: string): Promise<SessionDetails> => {
       const found = this.sessionsList.find((s) => s.id === id);
       const messages: ChatMessage[] = [
