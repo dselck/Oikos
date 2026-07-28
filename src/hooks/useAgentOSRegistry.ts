@@ -1,53 +1,23 @@
 "use client";
 
-import { useEffect, useCallback, useRef } from "react";
+import { useEffect, useCallback, useMemo } from "react";
 import { useOikosStore } from "@/lib/store";
-import { createAgentOSClient, IAgentOSClient } from "@/lib/agentos-client";
+import { IAgentOSClient } from "@/lib/agentos-client";
+import {
+  AgentOSRegistryEngine,
+  EntityType,
+  MutateEntityParams,
+  SaveAgentInput,
+  SaveTeamInput,
+  SaveWorkflowInput,
+} from "@/lib/agentos-registry";
 import { Agent, Team, Workflow, KnowledgeBase, Session, IndexContentParams, IngestionResponse } from "@/lib/types";
-
-export type EntityType = "agents" | "teams" | "workflows" | "knowledgeBases" | "sessions";
+import { IndexDocumentInput, IndexUrlInput } from "@/lib/rag-engine";
 
 export interface AgentOSRegistryOptions {
   client?: IAgentOSClient;
   autoFetch?: boolean;
   instanceId?: string;
-}
-
-export interface MutateEntityParams<T = Record<string, unknown>> {
-  resource: EntityType;
-  action: "create" | "update" | "delete";
-  id?: string;
-  payload?: Partial<T>;
-}
-
-export interface SaveAgentInput {
-  id?: string;
-  name: string;
-  description?: string;
-  modelProvider?: string;
-  modelName?: string;
-  systemPrompt?: string;
-  instructions?: string[];
-  tools?: string[];
-}
-
-export interface SaveTeamInput {
-  id?: string;
-  name: string;
-  description?: string | null;
-  leaderAgentId?: string;
-  memberAgentIds?: string[];
-  executionMode?: string;
-  instructions?: string[];
-  sharedMemory?: boolean;
-}
-
-export interface SaveWorkflowInput {
-  id?: string;
-  name: string;
-  description?: string | null;
-  steps?: Array<Record<string, unknown>>;
-  sessionState?: Record<string, unknown>;
 }
 
 export interface UseAgentOSRegistryReturn {
@@ -67,241 +37,80 @@ export interface UseAgentOSRegistryReturn {
   deleteEntity: (resource: EntityType, id: string) => Promise<boolean>;
   mutateEntity: <T = Record<string, unknown>>(params: MutateEntityParams<T>) => Promise<T | boolean>;
   indexContent: (params: IndexContentParams) => Promise<IngestionResponse>;
+  indexDocument: (input: IndexDocumentInput) => Promise<IngestionResponse>;
+  indexUrl: (input: IndexUrlInput) => Promise<IngestionResponse>;
 }
 
 /**
- * Deep AgentOS Registry Engine Hook
+ * Deep AgentOS Registry Engine React Hook Adapter
  *
- * Encapsulates centralized reactive entity hydration directly into useOikosStore,
- * network-first entity mutations via unified `mutateEntity` seam,
- * targeted resource cache revalidation, and error recovery.
+ * Provides reactive subscriptions to `useOikosStore` cache while delegating all
+ * entity normalization, mutations, RAG indexing, and hydration to the pure `AgentOSRegistryEngine`.
  */
 export function useAgentOSRegistry(options: AgentOSRegistryOptions = {}): UseAgentOSRegistryReturn {
   const store = useOikosStore();
   const { activeInstance } = store;
   const targetInstanceId = options.instanceId ?? activeInstance?.id ?? "default";
 
-  const clientRef = useRef<IAgentOSClient | null>(options.client || null);
+  const engine = useMemo(() => {
+    return new AgentOSRegistryEngine({
+      client: options.client,
+      instanceId: targetInstanceId,
+    });
+  }, [options.client, targetInstanceId]);
 
-  if (options.client) {
-    clientRef.current = options.client;
-  }
-
-  const getClient = useCallback((): IAgentOSClient => {
-    if (clientRef.current) return clientRef.current;
-    return createAgentOSClient(targetInstanceId);
-  }, [targetInstanceId]);
-
-  // Targeted Resource Revalidation
-  const revalidateResource = useCallback(
-    async (resource: EntityType) => {
-      const client = getClient();
-      const currentStore = useOikosStore.getState();
-      switch (resource) {
-        case "agents": {
-          const list = await client.agents.list();
-          currentStore.setAgents(list);
-          break;
-        }
-        case "teams": {
-          const list = await client.teams.list();
-          currentStore.setTeams(list);
-          break;
-        }
-        case "workflows": {
-          const list = await client.workflows.list();
-          currentStore.setWorkflows(list);
-          break;
-        }
-        case "knowledgeBases": {
-          const list = await client.knowledgeBases.list();
-          currentStore.setKnowledgeBases(list);
-          break;
-        }
-        case "sessions": {
-          const list = await client.sessions.list();
-          currentStore.setSessions(list);
-          break;
-        }
-      }
-    },
-    [getClient]
-  );
-
-  // Full Refresh / Hydrate from AgentOS into useOikosStore
   const refresh = useCallback(async () => {
-    const currentStore = useOikosStore.getState();
-    currentStore.setRegistryLoading(true);
-    currentStore.setRegistryError(null);
+    await engine.refresh();
+  }, [engine]);
 
-    try {
-      const client = getClient();
-      const [agentsData, teamsData, workflowsData, kbData, sessionsData] = await Promise.all([
-        client.agents.list(),
-        client.teams.list(),
-        client.workflows.list(),
-        client.knowledgeBases.list(),
-        client.sessions.list(),
-      ]);
-
-      currentStore.setHydratedEntities({
-        agents: agentsData,
-        teams: teamsData,
-        workflows: workflowsData,
-        knowledgeBases: kbData,
-        sessions: sessionsData,
-      });
-    } catch (err) {
-      const errMsg = err instanceof Error ? err.message : String(err);
-      currentStore.setRegistryError(`Failed to load AgentOS Registry: ${errMsg}`);
-    }
-  }, [getClient]);
-
-  // Auto-fetch on mount / instance change
   useEffect(() => {
     if (options.autoFetch !== false) {
       refresh();
     }
   }, [refresh, options.autoFetch, targetInstanceId]);
 
-  // Unified Deep Mutation Seam
-  const mutateEntity = async <T = Record<string, unknown>>(
-    params: MutateEntityParams<T>
-  ): Promise<T | boolean> => {
-    const { resource, action, id, payload } = params;
-    const mutId = id || (payload && (payload as Record<string, unknown>).id as string) || `${resource}-${Date.now()}`;
-    const currentStore = useOikosStore.getState();
+  const saveAgent = useCallback(
+    async (input: SaveAgentInput) => engine.saveAgent(input),
+    [engine]
+  );
 
-    currentStore.addPendingMutation(mutId);
-    currentStore.setRegistryError(null);
+  const saveTeam = useCallback(
+    async (input: SaveTeamInput) => engine.saveTeam(input),
+    [engine]
+  );
 
-    try {
-      const client = getClient();
+  const saveWorkflow = useCallback(
+    async (input: SaveWorkflowInput) => engine.saveWorkflow(input),
+    [engine]
+  );
 
-      if (action === "delete") {
-        if (!id) throw new Error(`Missing entity ID for delete action on ${resource}`);
-        let ok = false;
-        switch (resource) {
-          case "agents":
-            ok = await client.agents.delete(id);
-            break;
-          case "teams":
-            ok = await client.teams.delete(id);
-            break;
-          case "workflows":
-            ok = await client.workflows.delete(id);
-            break;
-          case "knowledgeBases":
-            ok = await client.knowledgeBases.delete(id);
-            break;
-          case "sessions":
-            ok = await client.sessions.delete(id);
-            if (ok) {
-              currentStore.evictSessionDetailsCache(`${targetInstanceId}:${id}`);
-            }
-            break;
-        }
-        if (ok) {
-          await revalidateResource(resource);
-        }
-        return ok;
-      }
+  const deleteEntity = useCallback(
+    async (resource: EntityType, id: string) => engine.deleteEntity(resource, id),
+    [engine]
+  );
 
-      // Action: create or update
-      if (!payload) throw new Error(`Missing payload for ${action} action on ${resource}`);
-      let result: unknown;
-      switch (resource) {
-        case "agents":
-          result = await client.agents.create(payload as Record<string, unknown>);
-          break;
-        case "teams":
-          result = await client.teams.create(payload as Record<string, unknown>);
-          break;
-        case "workflows":
-          result = await client.workflows.create(payload as Record<string, unknown>);
-          break;
-        case "knowledgeBases":
-          result = await client.knowledgeBases.create(payload as Record<string, unknown>);
-          break;
-        case "sessions":
-          throw new Error("Sessions are created via SessionStreamEngine, not direct registry mutation.");
-      }
-
-      await revalidateResource(resource);
-      return result as T;
-    } catch (err) {
-      const errMsg = err instanceof Error ? err.message : String(err);
-      currentStore.setRegistryError(`Failed to ${action} ${resource}: ${errMsg}`);
-      throw err;
-    } finally {
-      currentStore.removePendingMutation(mutId);
-    }
-  };
-
-  const saveAgent = async (input: SaveAgentInput): Promise<Agent> => {
-    const id = input.id || `agent-${Date.now()}`;
-    const payload = {
-      id,
-      name: input.name,
-      description: input.description || "",
-      modelProvider: input.modelProvider || "openai",
-      modelName: input.modelName || "gpt-4o",
-      systemPrompt: input.systemPrompt || "",
-      instructions: input.instructions || [],
-      tools: input.tools || [],
-      instructionsJson: JSON.stringify(input.instructions || []),
-      toolsJson: JSON.stringify(input.tools || []),
-    };
-    return mutateEntity<Agent>({ resource: "agents", action: "create", id, payload }) as Promise<Agent>;
-  };
-
-  const saveTeam = async (input: SaveTeamInput): Promise<Team> => {
-    const id = input.id || `team-${Date.now()}`;
-    const payload = {
-      id,
-      name: input.name,
-      description: input.description || "",
-      leaderAgentId: input.leaderAgentId,
-      memberAgentIds: input.memberAgentIds || [],
-      executionMode: input.executionMode || "sequential",
-      instructions: input.instructions || [],
-      sharedMemory: input.sharedMemory ?? true,
-      memberAgentIdsJson: JSON.stringify(input.memberAgentIds || []),
-      instructionsJson: JSON.stringify(input.instructions || []),
-    };
-    return mutateEntity<Team>({ resource: "teams", action: "create", id, payload }) as Promise<Team>;
-  };
-
-  const saveWorkflow = async (input: SaveWorkflowInput): Promise<Workflow> => {
-    const id = input.id || `wf-${Date.now()}`;
-    const payload = {
-      id,
-      name: input.name,
-      description: input.description || "",
-      steps: input.steps || [],
-      sessionState: input.sessionState || {},
-      stepsJson: JSON.stringify(input.steps || []),
-      sessionStateJson: JSON.stringify(input.sessionState || {}),
-    };
-    return mutateEntity<Workflow>({ resource: "workflows", action: "create", id, payload }) as Promise<Workflow>;
-  };
-
-  const deleteEntity = async (resource: EntityType, id: string): Promise<boolean> => {
-    return mutateEntity({ resource, action: "delete", id }) as Promise<boolean>;
-  };
-
-  const pendingMutationsArray = Array.from(store.pendingMutations);
-  const isMutating = (id: string) => store.pendingMutations.has(id);
+  const mutateEntity = useCallback(
+    async <T = Record<string, unknown>>(params: MutateEntityParams<T>) => engine.mutateEntity<T>(params),
+    [engine]
+  );
 
   const indexContent = useCallback(
-    async (params: IndexContentParams): Promise<IngestionResponse> => {
-      const client = getClient();
-      const result = await client.knowledgeBases.indexContent(params);
-      await revalidateResource("knowledgeBases");
-      return result;
-    },
-    [getClient, revalidateResource]
+    async (params: IndexContentParams) => engine.indexContent(params),
+    [engine]
   );
+
+  const indexDocument = useCallback(
+    async (input: IndexDocumentInput) => engine.indexDocument(input),
+    [engine]
+  );
+
+  const indexUrl = useCallback(
+    async (input: IndexUrlInput) => engine.indexUrl(input),
+    [engine]
+  );
+
+  const pendingMutationsArray = Array.from(store.pendingMutations);
+  const isMutating = useCallback((id: string) => store.pendingMutations.has(id), [store.pendingMutations]);
 
   return {
     agents: store.agents,
@@ -320,5 +129,7 @@ export function useAgentOSRegistry(options: AgentOSRegistryOptions = {}): UseAge
     deleteEntity,
     mutateEntity,
     indexContent,
+    indexDocument,
+    indexUrl,
   };
 }

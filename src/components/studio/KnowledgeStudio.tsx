@@ -31,7 +31,7 @@ interface KnowledgeBaseRecord {
 }
 
 export function KnowledgeStudio() {
-  const { knowledgeBases: knowledgeBasesRaw, deleteEntity, mutateEntity, indexContent } = useAgentOSRegistry();
+  const { knowledgeBases: knowledgeBasesRaw, deleteEntity, mutateEntity, indexDocument, indexUrl } = useAgentOSRegistry();
   const knowledgeBases = knowledgeBasesRaw as unknown as KnowledgeBaseRecord[];
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -102,18 +102,28 @@ export function KnowledgeStudio() {
     setIngestionError(null);
 
     try {
-      const res = await indexContent({
-        kbId: activeSelectedKbId,
-        sourceType,
-        title: docTitle,
-        content: sourceType !== "url" ? docContent : undefined,
-        url: sourceType === "url" ? docUrl : undefined,
-        readerType: readerType || undefined,
-        chunkingStrategy,
+      const options = {
+        strategy: chunkingStrategy,
         chunkSize,
         chunkOverlap,
         recreateVectorDb,
-      });
+      };
+
+      const res =
+        sourceType === "url"
+          ? await indexUrl({
+              kbId: activeSelectedKbId,
+              title: docTitle,
+              url: docUrl,
+              options,
+            })
+          : await indexDocument({
+              kbId: activeSelectedKbId,
+              title: docTitle,
+              content: docContent,
+              format: sourceType === "markdown" ? "markdown" : "text",
+              options,
+            });
 
       setIngestionResult(res);
       setDocTitle("");

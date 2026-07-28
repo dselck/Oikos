@@ -61,7 +61,7 @@ A vector database index and document store attached to an Agent to supply semant
 _Avoid_: Document folder, Vector store
 
 **RAG Document Indexing Engine**:
-The deep module interface in `AgentOS Client` (`knowledgeBases.indexContent`) and `useAgentOSRegistry` (`indexContent`) that encapsulates document and URL ingestion, reader strategy selection (`MarkdownReader`, `WebsiteReader`, `PDFReader`), chunking parameters (`recursive`, `semantic`), vector DB embedding execution, and ingestion telemetry.
+The deep module class in `src/lib/rag-engine.ts` (`RagIndexingEngine`) and `useAgentOSRegistry` (`indexDocument`, `indexUrl`) that encapsulates document and URL ingestion, format auto-detection, reader strategy resolution (`MarkdownReader`, `WebsiteReader`, `PDFReader`, `TextReader`), chunking default derivation (`recursive`, size, overlap), vector DB embedding execution, and ingestion telemetry.
 _Avoid_: Document embedder, Chunking hook, File uploader
 
 **Workflow Studio**:
