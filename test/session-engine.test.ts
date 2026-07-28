@@ -1,29 +1,35 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
 import { startSimulator } from "../simulator/server";
 import { SessionStreamEngine, sessionStreamEngine, StreamEvent } from "../src/lib/session-engine";
-import { ToolExecutionAdapter, ClientToolResult, ToolExecutionContext } from "../src/lib/client-tools";
-import { ChatMessage } from "../src/lib/types";
+import { ClientToolEngine, ToolExecutionResponse } from "../src/lib/client-tools/engine";
+import { ClientToolResult, ToolExecutionContext } from "../src/lib/client-tools/types";
+import { ChatMessage, ToolCallExecution } from "../src/lib/types";
 import { useOikosStore } from "../src/lib/store";
 
-class FakeToolAdapter implements ToolExecutionAdapter {
+class FakeToolAdapter extends ClientToolEngine {
   public executedTools: string[] = [];
 
-  hasTool(toolName: string): boolean {
+  override hasTool(toolName: string): boolean {
     return toolName === "fake_test_tool";
   }
 
-  async executeTool(
-    toolName: string,
-    args: Record<string, unknown>,
+  override async executeAndContinue(
+    toolExecution: ToolCallExecution,
     context: ToolExecutionContext
-  ): Promise<ClientToolResult> {
-    this.executedTools.push(toolName);
+  ): Promise<ToolExecutionResponse> {
+    this.executedTools.push(toolExecution.toolName);
     return {
-      toolCallId: context.toolCallId,
-      status: "success",
-      output: { result: "fake tool executed successfully" },
-      executionLocation: "client",
-      durationMs: 10,
+      isClientHandled: true,
+      result: {
+        toolCallId: context.toolCallId,
+        status: "success",
+        output: { result: "fake tool executed successfully" },
+        executionLocation: "client",
+      },
+      continuationPayload: {
+        tool_call_id: context.toolCallId,
+        output: { result: "fake tool executed successfully" },
+      },
     };
   }
 }

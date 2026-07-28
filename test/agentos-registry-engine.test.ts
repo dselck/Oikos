@@ -3,6 +3,7 @@ import { renderHook, act } from "@testing-library/react";
 import { useAgentOSRegistry } from "../src/hooks/useAgentOSRegistry";
 import { MockAgentOSClient } from "../src/lib/agentos-client";
 import { sessionMemoryEngine } from "../src/lib/session-engine";
+import { Agent, Team, Workflow, SessionDetails, IngestionResponse } from "../src/lib/types";
 
 describe("AgentOS Registry Engine Seam (useAgentOSRegistry)", () => {
   let mockClient: MockAgentOSClient;
@@ -138,7 +139,7 @@ describe("AgentOS Registry Engine Seam (useAgentOSRegistry)", () => {
       await result.current.refresh();
     });
 
-    let savedAgent;
+    let savedAgent: Agent | undefined;
     await act(async () => {
       savedAgent = await result.current.saveAgent({
         name: "Typed Agent",
@@ -148,55 +149,55 @@ describe("AgentOS Registry Engine Seam (useAgentOSRegistry)", () => {
       });
     });
 
-    expect(savedAgent.name).toBe("Typed Agent");
+    expect(savedAgent!.name).toBe("Typed Agent");
     expect(result.current.agents.some((a) => a.name === "Typed Agent")).toBe(true);
 
-    let savedTeam;
+    let savedTeam: Team | undefined;
     await act(async () => {
       savedTeam = await result.current.saveTeam({
         name: "Typed Team",
-        memberAgentIds: [savedAgent.id],
+        memberAgentIds: [savedAgent!.id],
       });
     });
 
-    expect(savedTeam.name).toBe("Typed Team");
+    expect(savedTeam!.name).toBe("Typed Team");
     expect(result.current.teams.some((t) => t.name === "Typed Team")).toBe(true);
 
-    let savedWf;
+    let savedWf: Workflow | undefined;
     await act(async () => {
       savedWf = await result.current.saveWorkflow({
         name: "Typed Workflow",
-        steps: [{ id: "step-1", type: "agent", targetId: savedAgent.id }],
+        steps: [{ id: "step-1", type: "agent", targetId: savedAgent!.id }],
       });
     });
 
-    expect(savedWf.name).toBe("Typed Workflow");
+    expect(savedWf!.name).toBe("Typed Workflow");
     expect(result.current.workflows.some((w) => w.name === "Typed Workflow")).toBe(true);
 
     await act(async () => {
-      const ok = await result.current.deleteEntity("agents", savedAgent.id);
+      const ok = await result.current.deleteEntity("agents", savedAgent!.id);
       expect(ok).toBe(true);
     });
 
-    expect(result.current.agents.some((a) => a.id === savedAgent.id)).toBe(false);
+    expect(result.current.agents.some((a) => a.id === savedAgent!.id)).toBe(false);
   });
 
   it("fetches, normalizes, and caches session details via sessionMemoryEngine with telemetry & forceRefresh", async () => {
-    let details;
+    let details: SessionDetails | undefined;
     await act(async () => {
       details = await sessionMemoryEngine.getSessionDetails("sess-1", { client: mockClient });
     });
 
     expect(details).toBeDefined();
-    expect(details.id).toBe("sess-1");
-    expect(details.messages.length).toBeGreaterThan(0);
-    expect(details.memorySummary).toContain("Mock memory summary");
-    expect(details.telemetry).toBeDefined();
-    expect(details.telemetry?.totalMessages).toBe(2);
-    expect(details.telemetry?.totalToolCalls).toBe(0);
+    expect(details!.id).toBe("sess-1");
+    expect(details!.messages.length).toBeGreaterThan(0);
+    expect(details!.memorySummary).toContain("Mock memory summary");
+    expect(details!.telemetry).toBeDefined();
+    expect(details!.telemetry?.totalMessages).toBe(2);
+    expect(details!.telemetry?.totalToolCalls).toBe(0);
 
     // Repeat call should return cached details instance
-    let cachedDetails;
+    let cachedDetails: SessionDetails | undefined;
     await act(async () => {
       cachedDetails = await sessionMemoryEngine.getSessionDetails("sess-1", { client: mockClient });
     });
@@ -204,13 +205,13 @@ describe("AgentOS Registry Engine Seam (useAgentOSRegistry)", () => {
     expect(cachedDetails).toBe(details);
 
     // forceRefresh: true bypasses cache and returns fresh instance
-    let refreshedDetails;
+    let refreshedDetails: SessionDetails | undefined;
     await act(async () => {
       refreshedDetails = await sessionMemoryEngine.getSessionDetails("sess-1", { client: mockClient, forceRefresh: true });
     });
 
     expect(refreshedDetails).not.toBe(cachedDetails);
-    expect(refreshedDetails.id).toBe("sess-1");
+    expect(refreshedDetails!.id).toBe("sess-1");
   });
 
   it("automatically evicts session details cache when deleting a session via deleteEntity", async () => {
@@ -222,12 +223,12 @@ describe("AgentOS Registry Engine Seam (useAgentOSRegistry)", () => {
       await result.current.refresh();
     });
 
-    let details1;
+    let details1: SessionDetails | undefined;
     await act(async () => {
       details1 = await sessionMemoryEngine.getSessionDetails("sess-1", { client: mockClient });
     });
     expect(details1).toBeDefined();
-    expect(details1.id).toBe("sess-1");
+    expect(details1!.id).toBe("sess-1");
 
     await act(async () => {
       const ok = await result.current.deleteEntity("sessions", "sess-1");
@@ -243,7 +244,7 @@ describe("AgentOS Registry Engine Seam (useAgentOSRegistry)", () => {
       useAgentOSRegistry({ client: mockClient, autoFetch: false })
     );
 
-    let res;
+    let res: IngestionResponse | undefined;
     await act(async () => {
       res = await result.current.indexContent({
         kbId: "kb-1",
@@ -257,10 +258,10 @@ describe("AgentOS Registry Engine Seam (useAgentOSRegistry)", () => {
     });
 
     expect(res).toBeDefined();
-    expect(res.success).toBe(true);
-    expect(res.documentsIndexed).toBe(1);
-    expect(res.chunksGenerated).toBeGreaterThan(0);
-    expect(res.message).toContain("MarkdownReader");
+    expect(res!.success).toBe(true);
+    expect(res!.documentsIndexed).toBe(1);
+    expect(res!.chunksGenerated).toBeGreaterThan(0);
+    expect(res!.message).toContain("MarkdownReader");
   });
 
   it("normalizes raw JSON string payloads and plain string fallbacks into clean structural domain properties", async () => {

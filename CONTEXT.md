@@ -29,7 +29,7 @@ A stateful conversation thread between a user and an Agent or Workflow maintaine
 _Avoid_: Thread, Chat log
 
 **Session Memory Engine**:
-The deep module class in `src/lib/session-engine.ts` (`SessionMemoryEngine`) that encapsulates session transcript fetching from `AgentOS Client`, user memory context extraction, response payload normalization into standard `ChatMessage` domain models, and instance-scoped session state caching.
+The deep module class in `src/lib/session-engine.ts` (`SessionMemoryEngine`) that encapsulates session transcript fetching from `AgentOS Client`, user memory context extraction, response payload normalization into standard `ChatMessage` domain models, instance-scoped session state caching, and session cache eviction (`evictSession`).
 _Avoid_: Session memory hook, History reader, Message list fetcher
 
 **Instance Config**:
@@ -77,7 +77,7 @@ The deep module interface in Oikos that encapsulates all HTTP REST requests, SSE
 _Avoid_: Fetch helper, Proxy wrapper, API utils
 
 **AgentOS Registry Engine**:
-The deep module in Oikos (`src/hooks/useAgentOSRegistry.ts` / `src/lib/agentos-registry.ts`) that encapsulates centralized reactive entity hydration into `useOikosStore`, entity record normalization (parsing JSON payload strings into strongly-typed domain models), and domain-level mutations (`saveAgent`, `saveTeam`, `saveWorkflow`, `deleteEntity`) with loading states and error handling across runtime AgentOS entities.
+The deep module in Oikos (`src/hooks/useAgentOSRegistry.ts` / `src/lib/agentos-registry.ts`) that encapsulates headless entity hydration into state sinks via `RegistryStateSink` (`ZustandRegistrySink`, `MemoryRegistrySink`), entity record normalization, JSON payload stringification, and domain-level mutations (`saveAgent`, `saveTeam`, `saveWorkflow`, `saveKnowledgeBase`, `deleteEntity`) across runtime AgentOS entities.
 _Avoid_: Entity fetcher, Registry helper, Studio store
 
 **Client Tool Engine**:

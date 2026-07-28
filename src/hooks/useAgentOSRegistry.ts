@@ -10,6 +10,7 @@ import {
   SaveAgentInput,
   SaveTeamInput,
   SaveWorkflowInput,
+  SaveKnowledgeBaseInput,
 } from "@/lib/agentos-registry";
 import { Agent, Team, Workflow, KnowledgeBase, Session, IndexContentParams, IngestionResponse } from "@/lib/types";
 import { IndexDocumentInput, IndexUrlInput } from "@/lib/rag-engine";
@@ -34,6 +35,7 @@ export interface UseAgentOSRegistryReturn {
   saveAgent: (input: SaveAgentInput) => Promise<Agent>;
   saveTeam: (input: SaveTeamInput) => Promise<Team>;
   saveWorkflow: (input: SaveWorkflowInput) => Promise<Workflow>;
+  saveKnowledgeBase: (input: SaveKnowledgeBaseInput) => Promise<KnowledgeBase>;
   deleteEntity: (resource: EntityType, id: string) => Promise<boolean>;
   mutateEntity: <T = Record<string, unknown>>(params: MutateEntityParams<T>) => Promise<T | boolean>;
   indexContent: (params: IndexContentParams) => Promise<IngestionResponse>;
@@ -84,6 +86,11 @@ export function useAgentOSRegistry(options: AgentOSRegistryOptions = {}): UseAge
     [engine]
   );
 
+  const saveKnowledgeBase = useCallback(
+    async (input: SaveKnowledgeBaseInput) => engine.saveKnowledgeBase(input),
+    [engine]
+  );
+
   const deleteEntity = useCallback(
     async (resource: EntityType, id: string) => engine.deleteEntity(resource, id),
     [engine]
@@ -126,6 +133,7 @@ export function useAgentOSRegistry(options: AgentOSRegistryOptions = {}): UseAge
     saveAgent,
     saveTeam,
     saveWorkflow,
+    saveKnowledgeBase,
     deleteEntity,
     mutateEntity,
     indexContent,
@@ -133,3 +141,4 @@ export function useAgentOSRegistry(options: AgentOSRegistryOptions = {}): UseAge
     indexUrl,
   };
 }
+

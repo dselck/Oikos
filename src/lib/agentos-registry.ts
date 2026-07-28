@@ -1,6 +1,7 @@
 import { createAgentOSClient, IAgentOSClient } from "./agentos-client";
 import { useOikosStore } from "./store";
 import { RagIndexingEngine, IndexDocumentInput, IndexUrlInput } from "./rag-engine";
+import { sessionMemoryEngine } from "./session-engine";
 import {
   Agent,
   Team,
@@ -13,9 +14,110 @@ import {
 
 export type EntityType = "agents" | "teams" | "workflows" | "knowledgeBases" | "sessions";
 
+export interface RegistryStateSink {
+  setHydratedEntities(data: {
+    agents: Agent[];
+    teams: Team[];
+    workflows: Workflow[];
+    knowledgeBases: KnowledgeBase[];
+    sessions: Session[];
+  }): void;
+  setAgents(agents: Agent[]): void;
+  setTeams(teams: Team[]): void;
+  setWorkflows(workflows: Workflow[]): void;
+  setKnowledgeBases(knowledgeBases: KnowledgeBase[]): void;
+  setSessions(sessions: Session[]): void;
+  setLoading(loading: boolean): void;
+  setError(error: string | null): void;
+  addPendingMutation(id: string): void;
+  removePendingMutation(id: string): void;
+  evictSessionCache?(sessionId: string, instanceId?: string): void;
+}
+
+export class ZustandRegistrySink implements RegistryStateSink {
+  setHydratedEntities(data: {
+    agents: Agent[];
+    teams: Team[];
+    workflows: Workflow[];
+    knowledgeBases: KnowledgeBase[];
+    sessions: Session[];
+  }): void {
+    useOikosStore.getState().setHydratedEntities(data);
+  }
+  setAgents(agents: Agent[]): void {
+    useOikosStore.getState().setAgents(agents);
+  }
+  setTeams(teams: Team[]): void {
+    useOikosStore.getState().setTeams(teams);
+  }
+  setWorkflows(workflows: Workflow[]): void {
+    useOikosStore.getState().setWorkflows(workflows);
+  }
+  setKnowledgeBases(knowledgeBases: KnowledgeBase[]): void {
+    useOikosStore.getState().setKnowledgeBases(knowledgeBases);
+  }
+  setSessions(sessions: Session[]): void {
+    useOikosStore.getState().setSessions(sessions);
+  }
+  setLoading(loading: boolean): void {
+    useOikosStore.getState().setRegistryLoading(loading);
+  }
+  setError(error: string | null): void {
+    useOikosStore.getState().setRegistryError(error);
+  }
+  addPendingMutation(id: string): void {
+    useOikosStore.getState().addPendingMutation(id);
+  }
+  removePendingMutation(id: string): void {
+    useOikosStore.getState().removePendingMutation(id);
+  }
+  evictSessionCache(sessionId: string, instanceId: string = "default"): void {
+    sessionMemoryEngine.evictSession(sessionId, instanceId);
+  }
+}
+
+export class MemoryRegistrySink implements RegistryStateSink {
+  public agents: Agent[] = [];
+  public teams: Team[] = [];
+  public workflows: Workflow[] = [];
+  public knowledgeBases: KnowledgeBase[] = [];
+  public sessions: Session[] = [];
+  public isLoading: boolean = false;
+  public error: string | null = null;
+  public pendingMutations: Set<string> = new Set();
+  public evictedSessions: string[] = [];
+
+  setHydratedEntities(data: {
+    agents: Agent[];
+    teams: Team[];
+    workflows: Workflow[];
+    knowledgeBases: KnowledgeBase[];
+    sessions: Session[];
+  }): void {
+    this.agents = data.agents;
+    this.teams = data.teams;
+    this.workflows = data.workflows;
+    this.knowledgeBases = data.knowledgeBases;
+    this.sessions = data.sessions;
+    this.isLoading = false;
+    this.error = null;
+  }
+  setAgents(agents: Agent[]): void { this.agents = agents; }
+  setTeams(teams: Team[]): void { this.teams = teams; }
+  setWorkflows(workflows: Workflow[]): void { this.workflows = workflows; }
+  setKnowledgeBases(knowledgeBases: KnowledgeBase[]): void { this.knowledgeBases = knowledgeBases; }
+  setSessions(sessions: Session[]): void { this.sessions = sessions; }
+  setLoading(loading: boolean): void { this.isLoading = loading; }
+  setError(error: string | null): void { this.error = error; this.isLoading = false; }
+  addPendingMutation(id: string): void { this.pendingMutations.add(id); }
+  removePendingMutation(id: string): void { this.pendingMutations.delete(id); }
+  evictSessionCache(sessionId: string): void { this.evictedSessions.push(sessionId); }
+}
+
 export interface AgentOSRegistryOptions {
   client?: IAgentOSClient;
   instanceId?: string;
+  sink?: RegistryStateSink;
 }
 
 export interface MutateEntityParams<T = Record<string, unknown>> {
@@ -55,6 +157,15 @@ export interface SaveWorkflowInput {
   sessionState?: Record<string, unknown>;
 }
 
+export interface SaveKnowledgeBaseInput {
+  id?: string;
+  name: string;
+  description?: string | null;
+  vectorDbType?: string;
+  tableOrCollection?: string;
+  embedderModel?: string;
+}
+
 /**
  * Pure Deep AgentOS Registry Engine Class
  *
@@ -65,27 +176,28 @@ export class AgentOSRegistryEngine {
   private client?: IAgentOSClient;
   private instanceId: string;
   private ragEngine: RagIndexingEngine;
+  private sink: RegistryStateSink;
 
   constructor(options: AgentOSRegistryOptions = {}) {
     this.client = options.client;
     this.instanceId = options.instanceId || "default";
+    this.sink = options.sink || new ZustandRegistrySink();
     this.ragEngine = new RagIndexingEngine(this.client);
   }
 
   public getClient(): IAgentOSClient {
     if (this.client) return this.client;
-    const store = useOikosStore.getState();
-    const activeId = store.activeInstance?.id || this.instanceId;
+    const storeActiveInstanceId = typeof window !== "undefined" ? useOikosStore.getState().activeInstance?.id : undefined;
+    const activeId = storeActiveInstanceId || this.instanceId;
     return createAgentOSClient(activeId);
   }
 
   /**
-   * Hydrates all AgentOS entities into the Zustand store cache.
+   * Hydrates all AgentOS entities into the state sink.
    */
   public async refresh(): Promise<void> {
-    const store = useOikosStore.getState();
-    store.setRegistryLoading(true);
-    store.setRegistryError(null);
+    this.sink.setLoading(true);
+    this.sink.setError(null);
 
     try {
       const client = this.getClient();
@@ -97,7 +209,7 @@ export class AgentOSRegistryEngine {
         client.sessions.list(),
       ]);
 
-      store.setHydratedEntities({
+      this.sink.setHydratedEntities({
         agents: agentsData,
         teams: teamsData,
         workflows: workflowsData,
@@ -106,41 +218,40 @@ export class AgentOSRegistryEngine {
       });
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err);
-      store.setRegistryError(`Failed to load AgentOS Registry: ${errMsg}`);
+      this.sink.setError(`Failed to load AgentOS Registry: ${errMsg}`);
     }
   }
 
   /**
-   * Revalidates a single resource in the store cache.
+   * Revalidates a single resource in the state sink.
    */
   public async revalidateResource(resource: EntityType): Promise<void> {
     const client = this.getClient();
-    const store = useOikosStore.getState();
 
     switch (resource) {
       case "agents": {
         const list = await client.agents.list();
-        store.setAgents(list);
+        this.sink.setAgents(list);
         break;
       }
       case "teams": {
         const list = await client.teams.list();
-        store.setTeams(list);
+        this.sink.setTeams(list);
         break;
       }
       case "workflows": {
         const list = await client.workflows.list();
-        store.setWorkflows(list);
+        this.sink.setWorkflows(list);
         break;
       }
       case "knowledgeBases": {
         const list = await client.knowledgeBases.list();
-        store.setKnowledgeBases(list);
+        this.sink.setKnowledgeBases(list);
         break;
       }
       case "sessions": {
         const list = await client.sessions.list();
-        store.setSessions(list);
+        this.sink.setSessions(list);
         break;
       }
     }
@@ -154,10 +265,9 @@ export class AgentOSRegistryEngine {
   ): Promise<T | boolean> {
     const { resource, action, id, payload } = params;
     const mutId = id || (payload && (payload as Record<string, unknown>).id as string) || `${resource}-${Date.now()}`;
-    const store = useOikosStore.getState();
 
-    store.addPendingMutation(mutId);
-    store.setRegistryError(null);
+    this.sink.addPendingMutation(mutId);
+    this.sink.setError(null);
 
     try {
       const client = this.getClient();
@@ -181,8 +291,7 @@ export class AgentOSRegistryEngine {
           case "sessions":
             ok = await client.sessions.delete(id);
             if (ok) {
-              const activeId = store.activeInstance?.id || this.instanceId;
-              store.evictSessionDetailsCache(`${activeId}:${id}`);
+              this.sink.evictSessionCache?.(id, this.instanceId);
             }
             break;
         }
@@ -216,10 +325,10 @@ export class AgentOSRegistryEngine {
       return result as T;
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err);
-      store.setRegistryError(`Failed to ${action} ${resource}: ${errMsg}`);
+      this.sink.setError(`Failed to ${action} ${resource}: ${errMsg}`);
       throw err;
     } finally {
-      store.removePendingMutation(mutId);
+      this.sink.removePendingMutation(mutId);
     }
   }
 
@@ -271,6 +380,19 @@ export class AgentOSRegistryEngine {
     return this.mutateEntity<Workflow>({ resource: "workflows", action: "create", id, payload }) as Promise<Workflow>;
   }
 
+  public async saveKnowledgeBase(input: SaveKnowledgeBaseInput): Promise<KnowledgeBase> {
+    const id = input.id || `kb-${Date.now()}`;
+    const payload = {
+      id,
+      name: input.name,
+      description: input.description || "",
+      vectorDbType: input.vectorDbType || "sqlite_vec",
+      tableOrCollection: input.tableOrCollection || "documents_vec",
+      embedderModel: input.embedderModel || "text-embedding-3-small",
+    };
+    return this.mutateEntity<KnowledgeBase>({ resource: "knowledgeBases", action: "create", id, payload }) as Promise<KnowledgeBase>;
+  }
+
   public async deleteEntity(resource: EntityType, id: string): Promise<boolean> {
     return this.mutateEntity({ resource, action: "delete", id }) as Promise<boolean>;
   }
@@ -300,3 +422,4 @@ export const agentosRegistryEngine = new AgentOSRegistryEngine();
 export function createAgentOSRegistryEngine(options?: AgentOSRegistryOptions): AgentOSRegistryEngine {
   return new AgentOSRegistryEngine(options);
 }
+

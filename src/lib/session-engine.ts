@@ -516,7 +516,7 @@ export class SessionMemoryEngine {
     id: string,
     options?: { instanceId?: string; forceRefresh?: boolean; client?: IAgentOSClient }
   ): Promise<SessionDetails> {
-    const activeClient = options?.client || this.client || createAgentOSClient({ instanceId: options?.instanceId });
+    const activeClient = options?.client || this.client || createAgentOSClient(options?.instanceId || "default");
     const instanceId = options?.instanceId || "default";
     const cacheKey = `${instanceId}:${id}`;
 

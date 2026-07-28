@@ -31,8 +31,7 @@ interface KnowledgeBaseRecord {
 }
 
 export function KnowledgeStudio() {
-  const { knowledgeBases: knowledgeBasesRaw, deleteEntity, mutateEntity, indexDocument, indexUrl } = useAgentOSRegistry();
-  const knowledgeBases = knowledgeBasesRaw as unknown as KnowledgeBaseRecord[];
+  const { knowledgeBases, deleteEntity, saveKnowledgeBase, indexDocument, indexUrl } = useAgentOSRegistry();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [isCreating, setIsCreating] = useState(false);
@@ -68,15 +67,13 @@ export function KnowledgeStudio() {
     e.preventDefault();
     if (!name.trim() || !tableOrCollection.trim()) return;
 
-    const payload = {
+    await saveKnowledgeBase({
       name,
       description,
       vectorDbType,
       tableOrCollection,
       embedderModel,
-    };
-
-    await mutateEntity({ resource: "knowledgeBases", action: "create", payload });
+    });
     setIsCreating(false);
     setName("");
     setDescription("");
